@@ -112,12 +112,13 @@ export async function createUser(user: {
   email: string;
   passwordHash: string;
   displayName: string;
+  fleetId?: string;
 }): Promise<void> {
   const s = state();
   const now = new Date().toISOString();
   s.users.push({
     id: user.id,
-    fleetId: "fleet-001",
+    fleetId: user.fleetId ?? "fleet-" + Math.random().toString(36).slice(2, 8),
     email: user.email,
     passwordHash: user.passwordHash,
     displayName: user.displayName,
@@ -130,14 +131,21 @@ export async function createUser(user: {
 
 // ─── Vehicles ─────────────────────────────────────────────
 
-export async function getVehicles() {
-  return [...state().vehicles].sort(
+export async function getVehicles(fleetId?: string) {
+  let vehicles = state().vehicles;
+  if (fleetId) {
+    vehicles = vehicles.filter((v: any) => v.fleetId === fleetId);
+  }
+  return [...vehicles].sort(
     (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
 
-export async function getVehicleById(id: string) {
-  return state().vehicles.find((v: any) => v.id === id) ?? null;
+export async function getVehicleById(id: string, fleetId?: string) {
+  const v = state().vehicles.find((v: any) => v.id === id);
+  if (!v) return null;
+  if (fleetId && v.fleetId !== fleetId) return null;
+  return v;
 }
 
 export async function createVehicle(v: any): Promise<void> {
@@ -161,14 +169,21 @@ export async function deleteVehicle(id: string): Promise<void> {
 
 // ─── Drivers ──────────────────────────────────────────────
 
-export async function getDrivers() {
-  return [...state().drivers].sort(
+export async function getDrivers(fleetId?: string) {
+  let drivers = state().drivers;
+  if (fleetId) {
+    drivers = drivers.filter((d: any) => d.fleetId === fleetId);
+  }
+  return [...drivers].sort(
     (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
 
-export async function getDriverById(id: string) {
-  return state().drivers.find((d: any) => d.id === id) ?? null;
+export async function getDriverById(id: string, fleetId?: string) {
+  const d = state().drivers.find((d: any) => d.id === id);
+  if (!d) return null;
+  if (fleetId && d.fleetId !== fleetId) return null;
+  return d;
 }
 
 export async function createDriver(d: any): Promise<void> {
@@ -192,14 +207,21 @@ export async function deleteDriver(id: string): Promise<void> {
 
 // ─── Deliveries ───────────────────────────────────────────
 
-export async function getDeliveries() {
-  return [...state().deliveries].sort(
+export async function getDeliveries(fleetId?: string) {
+  let deliveries = state().deliveries;
+  if (fleetId) {
+    deliveries = deliveries.filter((d: any) => d.fleetId === fleetId);
+  }
+  return [...deliveries].sort(
     (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
 
-export async function getDeliveryById(id: string) {
-  return state().deliveries.find((d: any) => d.id === id) ?? null;
+export async function getDeliveryById(id: string, fleetId?: string) {
+  const d = state().deliveries.find((d: any) => d.id === id);
+  if (!d) return null;
+  if (fleetId && d.fleetId !== fleetId) return null;
+  return d;
 }
 
 export async function createDelivery(d: any): Promise<void> {
@@ -223,17 +245,27 @@ export async function deleteDelivery(id: string): Promise<void> {
 
 // ─── Fleet Summary ────────────────────────────────────────
 
-export async function getFleetSummary() {
+export async function getFleetSummary(fleetId?: string) {
   const s = state();
-  const totalVehicles = s.vehicles.length;
-  const activeDrivers = s.drivers.filter((d: any) => d.status !== "offline").length;
-  const deliveriesToday = s.deliveries.filter(
+  let vehicles = s.vehicles;
+  let drivers = s.drivers;
+  let deliveries = s.deliveries;
+
+  if (fleetId) {
+    vehicles = vehicles.filter((v: any) => v.fleetId === fleetId);
+    drivers = drivers.filter((d: any) => d.fleetId === fleetId);
+    deliveries = deliveries.filter((d: any) => d.fleetId === fleetId);
+  }
+
+  const totalVehicles = vehicles.length;
+  const activeDrivers = drivers.filter((d: any) => d.status !== "offline").length;
+  const deliveriesToday = deliveries.filter(
     (d: any) => ["in_transit", "picked_up", "delivered"].includes(d.status)
   ).length;
-  const activeVehicles = s.vehicles.filter((v: any) => v.status === "active").length;
+  const activeVehicles = vehicles.filter((v: any) => v.status === "active").length;
   const fleetUtilizationPercent =
     totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
-  const maintenanceAlerts = s.vehicles.filter(
+  const maintenanceAlerts = vehicles.filter(
     (v: any) => v.status === "maintenance" || v.status === "out_of_service"
   ).length;
 
@@ -242,8 +274,8 @@ export async function getFleetSummary() {
     activeDrivers,
     deliveriesToday,
     fleetUtilizationPercent,
-    totalDistanceKm: 1240,
-    fuelCostTotal: 38450,
+    totalDistanceKm: totalVehicles > 0 ? 1240 : 0,
+    fuelCostTotal: totalVehicles > 0 ? 38450 : 0,
     maintenanceAlerts,
   };
 }

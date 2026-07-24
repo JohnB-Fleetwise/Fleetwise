@@ -6,6 +6,10 @@ function uid(): string {
   return "user-" + Math.random().toString(36).slice(2, 12);
 }
 
+function fleetId(): string {
+  return "fleet-" + Math.random().toString(36).slice(2, 8);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { name, email, password } = await req.json();
@@ -38,6 +42,7 @@ export async function POST(req: NextRequest) {
       email,
       passwordHash,
       displayName: name,
+      fleetId: fleetId(),
     });
 
     return NextResponse.json({ success: true });

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDeliveryById, updateDelivery, deleteDelivery } from "@/lib/db";
+import { requireFleetId } from "@/lib/auth-helpers";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const delivery = await getDeliveryById(params.id);
+  const fleetId = await requireFleetId();
+  const delivery = await getDeliveryById(params.id, fleetId);
   if (!delivery) {
     return NextResponse.json({ error: "Delivery not found" }, { status: 404 });
   }
@@ -10,18 +12,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const fleetId = await requireFleetId();
   const data = await req.json();
-  const existing = await getDeliveryById(params.id);
+  const existing = await getDeliveryById(params.id, fleetId);
   if (!existing) {
     return NextResponse.json({ error: "Delivery not found" }, { status: 404 });
   }
   await updateDelivery(params.id, data);
-  const updated = await getDeliveryById(params.id);
+  const updated = await getDeliveryById(params.id, fleetId);
   return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const existing = await getDeliveryById(params.id);
+  const fleetId = await requireFleetId();
+  const existing = await getDeliveryById(params.id, fleetId);
   if (!existing) {
     return NextResponse.json({ error: "Delivery not found" }, { status: 404 });
   }

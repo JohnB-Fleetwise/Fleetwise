@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getUserByEmail } from "@/lib/db";
 
-const authOptions: AuthOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -35,6 +35,7 @@ const authOptions: AuthOptions = {
           email: user.email,
           name: user.display_name,
           role: user.role,
+          fleetId: user.fleet_id,
         };
       },
     }),
@@ -48,6 +49,7 @@ const authOptions: AuthOptions = {
       if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.fleetId = (user as any).fleetId;
       }
       return token;
     },
@@ -55,6 +57,7 @@ const authOptions: AuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).fleetId = token.fleetId;
       }
       return session;
     },

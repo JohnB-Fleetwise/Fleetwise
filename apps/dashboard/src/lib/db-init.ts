@@ -16,7 +16,7 @@ export async function initializeDatabase(): Promise<void> {
     return;
   }
 
-  // Seed demo user
+  // Seed demo user (admin always gets fleet-001 with demo data)
   const existingUser = await getUserByEmail("admin@fleetwise.app");
   if (!existingUser) {
     const passwordHash = await bcrypt.hash("fleetwise123", 10);
@@ -25,6 +25,7 @@ export async function initializeDatabase(): Promise<void> {
       email: "admin@fleetwise.app",
       passwordHash,
       displayName: "John B",
+      fleetId: "fleet-001",
     });
   }
 

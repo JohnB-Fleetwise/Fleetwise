@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDeliveries, createDelivery } from "@/lib/db";
+import { requireFleetId } from "@/lib/auth-helpers";
 
 export async function GET() {
-  const deliveries = await getDeliveries();
+  const fleetId = await requireFleetId();
+  const deliveries = await getDeliveries(fleetId);
   return NextResponse.json(deliveries);
 }
 
 export async function POST(req: NextRequest) {
+  const fleetId = await requireFleetId();
   const data = await req.json();
   const now = new Date().toISOString();
   const delivery = {
     id: "DLV-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
-    fleetId: "fleet-001",
+    fleetId,
     driverId: data.driverId || "",
     vehicleId: data.vehicleId || "",
     status: data.status || "pending",
