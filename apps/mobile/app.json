@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "FleetWise Driver",
+    "slug": "fleetwise-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fleetwise.driver"
+    },
+    "android": {
+      "package": "com.fleetwise.driver"
+    }
+  }
+}
