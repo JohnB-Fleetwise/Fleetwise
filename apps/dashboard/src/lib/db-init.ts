@@ -24,7 +24,7 @@ export async function initializeDatabase(): Promise<void> {
       id: "user-admin-001",
       email: "admin@fleetwise.app",
       passwordHash,
-      displayName: "Alex Morgan",
+      displayName: "John B",
     });
   }
 
