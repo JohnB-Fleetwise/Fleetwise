@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --color-fleet-50: #eff6ff;
+  --color-fleet-100: #dbeafe;
+  --color-fleet-200: #bfdbfe;
+  --color-fleet-300: #93c5fd;
+  --color-fleet-400: #60a5fa;
+  --color-fleet-500: #3b82f6;
+  --color-fleet-600: #2563eb;
+  --color-fleet-700: #1d4ed8;
+  --color-fleet-800: #1e40af;
+  --color-fleet-900: #1e3a8a;
+  --color-fleet-950: #172554;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-fleet-600 hover:bg-fleet-700 transition-colors shadow-md hover:shadow-lg;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-fleet-600 bg-white border-2 border-fleet-200 hover:border-fleet-300 hover:bg-fleet-50 transition-colors;
+  }
+  .section-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+}
