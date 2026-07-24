@@ -4,7 +4,7 @@ import path from "path";
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
-// ─── In-memory store (loaded from disk) ────────────────────
+// ─── In-memory store (loaded from disk when available) ────
 
 interface DbState {
   users: any[];
@@ -15,16 +15,24 @@ interface DbState {
 
 let _state: DbState = { users: [], vehicles: [], drivers: [], deliveries: [] };
 let _loaded = false;
+let _useDisk = true;
 
 function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    // Test if writable
+    fs.writeFileSync(DB_PATH + ".test", "ok");
+    fs.unlinkSync(DB_PATH + ".test");
+  } catch {
+    _useDisk = false;
   }
 }
 
 function loadState(): DbState {
-  ensureDir();
-  if (fs.existsSync(DB_PATH)) {
+  if (_useDisk) ensureDir();
+  if (_useDisk && fs.existsSync(DB_PATH)) {
     try {
       const raw = fs.readFileSync(DB_PATH, "utf-8");
       _state = JSON.parse(raw);
@@ -42,8 +50,13 @@ function state(): DbState {
 }
 
 function save() {
-  ensureDir();
-  fs.writeFileSync(DB_PATH, JSON.stringify(_state, null, 2));
+  if (!_useDisk) return;
+  try {
+    ensureDir();
+    fs.writeFileSync(DB_PATH, JSON.stringify(_state, null, 2));
+  } catch {
+    _useDisk = false;
+  }
 }
 
 // Signal to db-init that the database is ready (no async init needed)
