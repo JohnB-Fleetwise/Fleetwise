@@ -70,7 +70,7 @@ function Navbar() {
             Pricing
           </a>
         </div>
-        <a href="/dashboard" className="btn-primary text-sm !px-4 !py-2">
+        <a href="https://fleetwise-dashboard-lknj7907w-fleetwise.vercel.app/dashboard" className="btn-primary text-sm !px-4 !py-2">
           Start Free Trial
         </a>
       </nav>
@@ -101,7 +101,7 @@ function HeroSection() {
             all from one dashboard.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="/dashboard" className="btn-primary text-lg !px-8 !py-3.5">
+            <a href="https://fleetwise-dashboard-lknj7907w-fleetwise.vercel.app/dashboard" className="btn-primary text-lg !px-8 !py-3.5">
               Start Free Trial
             </a>
             <a
@@ -380,6 +380,7 @@ const plans = [
       "Email support",
     ],
     highlighted: false,
+    href: "https://buy.stripe.com/fZu4gzdZKgkd47f8I74wM00",
   },
   {
     name: "Professional",
@@ -395,6 +396,7 @@ const plans = [
       "Priority support",
     ],
     highlighted: true,
+    href: "https://buy.stripe.com/dRm4gz08Ugkd7jr4rR4wM01",
   },
 ];
 
@@ -487,14 +489,14 @@ function PricingSection() {
                 ))}
               </ul>
               <a
-                href="/dashboard"
+                href={plan.href}
                 className={`block text-center rounded-lg py-3 font-semibold text-sm transition-colors ${
                   plan.highlighted
                     ? "bg-white text-fleet-700 hover:bg-fleet-50"
                     : "btn-primary w-full"
                 }`}
               >
-                Start Free Trial
+                Subscribe
               </a>
             </div>
           ))}
@@ -518,7 +520,7 @@ function CTASection() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="/dashboard"
+            href="https://fleetwise-dashboard-lknj7907w-fleetwise.vercel.app/dashboard"
             className="inline-flex items-center justify-center px-8 py-3.5 rounded-lg font-semibold text-fleet-700 bg-white hover:bg-fleet-50 transition-colors shadow-lg text-lg"
           >
             Start Free Trial
