@@ -16,6 +16,10 @@ const authOptions: AuthOptions = {
           return null;
         }
 
+        // Ensure DB is seeded on first request
+        const { ensureDbInitialized } = await import("@/lib/db-setup");
+        await ensureDbInitialized();
+
         const user = await getUserByEmail(credentials.email);
         if (!user) {
           return null;
