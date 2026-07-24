@@ -22,9 +22,11 @@ export const Route = createRootRoute({
         content:
           "Know where every vehicle is, right now. Simple fleet tracking for small delivery and service businesses. Real-time GPS, driver management, and delivery tracking — all from one dashboard.",
       },
+      { name: "theme-color", content: "#1e40af" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.json" },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
@@ -61,6 +63,19 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Scripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").then(
+      (reg) => console.log("SW registered:", reg.scope),
+      (err) => console.log("SW registration failed:", err)
+    );
+  });
+}`,
+          }}
+        />
       </body>
     </html>
   );
