@@ -83,6 +83,23 @@ const SEED_DELIVERIES = [
   { id: "DLV-008", driverId: "D-007", vehicleId: "V-010", status: "in_transit", pLat: DAYTONA.lat, pLng: DAYTONA.lng, pStreet: "1 Airport Blvd", pCity: "Daytona Beach", dSpread: 4, schedPickDays: 0, schedDropDays: 0, desc: "Aviation parts", weight: 45, priority: "high", custName: "SkyTech Aviation", custPhone: "+1-386-555-1008", sigReq: true, payment: 120000, dist: 4.8, dur: 18, createdDays: -1 },
 ];
 
+// ─── Display helpers ───────────────────────────────────
+
+import type { Driver, Vehicle } from "@fleetwise/shared";
+
+export function getDriverDisplay(driver: Driver): { name: string; email: string } {
+  return {
+    name: driver.name || `Driver ${driver.id.slice(-4)}`,
+    email: driver.email || `${driver.id}@fleetwise.app`,
+  };
+}
+
+export function getVehicleDriverName(vehicle: Vehicle): string {
+  return vehicle.assignedDriverId
+    ? `Driver ${vehicle.assignedDriverId.slice(-4)}`
+    : "Unassigned";
+}
+
 // ─── Seed function ────────────────────────────────────
 
 let _seeded = false;
