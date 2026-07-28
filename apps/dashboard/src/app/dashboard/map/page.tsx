@@ -1,16 +1,17 @@
 // @ts-nocheck
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useFleetStore } from "@/lib/store";
 import { getVehicleDriverName } from "@/lib/mock-data";
-import type { Vehicle } from "@fleetwise/shared";
+import type { Vehicle, Delivery } from "@fleetwise/shared";
 import dynamic from "next/dynamic";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
 const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
 const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false });
+const Polyline = dynamic(() => import("react-leaflet").then((m) => m.Polyline), { ssr: false });
 
 function statusColor(status: string): string {
   switch (status) {
@@ -27,7 +28,7 @@ function statusColor(status: string): string {
   }
 }
 
-function createIcon(color: string) {
+function createIcon(color: string, label?: string) {
   if (typeof window === "undefined") return undefined;
   const L = (window as any).L ?? require("leaflet");
   return L.divIcon({
@@ -39,14 +40,31 @@ function createIcon(color: string) {
       border-radius: 50%;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       display: flex; align-items: center; justify-content: center;
-    ">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M8 7h8M8 11h5M8 15h8M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
-      </svg>
-    </div>`,
+      font-size: 11px; font-weight: bold; color: white;
+    ">${label || ""}</div>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
     popupAnchor: [0, -16],
+  });
+}
+
+function createDeliveryIcon(color: string, letter: string) {
+  if (typeof window === "undefined") return undefined;
+  const L = (window as any).L ?? require("leaflet");
+  return L.divIcon({
+    className: "custom-marker",
+    html: `<div style="
+      width: 24px; height: 24px;
+      background: ${color};
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: bold; color: white;
+    ">${letter}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -14],
   });
 }
 
@@ -77,6 +95,160 @@ function VehicleMarkers({ vehicles }: { vehicles: Vehicle[] }) {
               </div>
             </Popup>
           </Marker>
+        );
+      })}
+    </>
+  );
+}
+
+// ─── Delivery Layer ────────────────────────────────────
+
+interface RouteGeometry {
+  coordinates: [number, number][];
+}
+
+async function fetchRoute(
+  pickupLng: number,
+  pickupLat: number,
+  dropoffLng: number,
+  dropoffLat: number
+): Promise<RouteGeometry | null> {
+  const url = `https://router.project-osrm.org/route/v1/driving/${pickupLng},${pickupLat};${dropoffLng},${dropoffLat}?overview=full&geometries=geojson`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.routes || data.routes.length === 0) return null;
+    return data.routes[0].geometry as RouteGeometry;
+  } catch (err) {
+    console.warn("[DeliveryLayer] OSRM route fetch failed:", err);
+    return null;
+  }
+}
+
+function DeliveryLayer({ deliveries }: { deliveries: Delivery[] }) {
+  const [routes, setRoutes] = useState<Record<string, RouteGeometry | null>>({});
+  const [fetching, setFetching] = useState(false);
+
+  useEffect(() => {
+    const deliveriesWithCoords = deliveries.filter(
+      (d) =>
+        d.pickupAddress?.coordinates &&
+        d.dropoffAddress?.coordinates &&
+        d.status !== "delivered" &&
+        d.status !== "cancelled" &&
+        d.status !== "failed"
+    );
+
+    if (deliveriesWithCoords.length === 0) {
+      setRoutes({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchAllRoutes = async () => {
+      setFetching(true);
+      const result: Record<string, RouteGeometry | null> = {};
+
+      for (const d of deliveriesWithCoords) {
+        if (cancelled) return;
+
+        const pCoords = d.pickupAddress!.coordinates!;
+        const dCoords = d.dropoffAddress!.coordinates!;
+
+        const geometry = await fetchRoute(
+          pCoords.longitude,
+          pCoords.latitude,
+          dCoords.longitude,
+          dCoords.latitude
+        );
+
+        if (!cancelled) {
+          result[d.id] = geometry;
+          // Small delay to avoid hammering OSRM
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+
+      if (!cancelled) {
+        setRoutes(result);
+        setFetching(false);
+      }
+    };
+
+    fetchAllRoutes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveries]);
+
+  if (typeof window === "undefined") return null;
+
+  return (
+    <>
+      {deliveries.map((d) => {
+        const pCoords = d.pickupAddress?.coordinates;
+        const dCoords = d.dropoffAddress?.coordinates;
+
+        if (!pCoords || !dCoords) return null;
+
+        const pickupIcon = createDeliveryIcon("#22c55e", "P");
+        const dropoffIcon = createDeliveryIcon("#ef4444", "D");
+        if (!pickupIcon || !dropoffIcon) return null;
+
+        const routeGeo = routes[d.id];
+
+        return (
+          <span key={d.id}>
+            {/* Pickup marker (green) */}
+            <Marker
+              position={[pCoords.latitude, pCoords.longitude]}
+              icon={pickupIcon}
+            >
+              <Popup>
+                <div className="text-sm min-w-[160px]">
+                  <p className="font-semibold text-gray-900">{d.customerName}</p>
+                  <p className="text-gray-500 text-xs">Pickup: {d.pickupAddress.street}</p>
+                  <p className="text-gray-500 text-xs">
+                    Priority: <span className="font-medium capitalize">{d.priority}</span>
+                  </p>
+                  <p className="text-gray-400 text-[10px] mt-1">{d.id}</p>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* Dropoff marker (red) */}
+            <Marker
+              position={[dCoords.latitude, dCoords.longitude]}
+              icon={dropoffIcon}
+            >
+              <Popup>
+                <div className="text-sm min-w-[160px]">
+                  <p className="font-semibold text-gray-900">{d.customerName}</p>
+                  <p className="text-gray-500 text-xs">Dropoff: {d.dropoffAddress.street}</p>
+                  <p className="text-gray-500 text-xs">
+                    Priority: <span className="font-medium capitalize">{d.priority}</span>
+                  </p>
+                  <p className="text-gray-400 text-[10px] mt-1">{d.id}</p>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* Route line */}
+            {routeGeo && routeGeo.coordinates && routeGeo.coordinates.length > 0 && (
+              <Polyline
+                positions={routeGeo.coordinates.map((c: [number, number]) => [c[1], c[0]])}
+                pathOptions={{
+                  color: "#2563eb",
+                  weight: 3,
+                  opacity: 0.6,
+                }}
+              />
+            )}
+          </span>
         );
       })}
     </>
@@ -136,7 +308,7 @@ function VehicleSidebar({
 }
 
 export default function MapPage() {
-  const { vehicles } = useFleetStore();
+  const { vehicles, deliveries } = useFleetStore();
   const [mounted, setMounted] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
 
@@ -176,6 +348,7 @@ export default function MapPage() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <VehicleMarkers vehicles={vehicles} />
+              <DeliveryLayer deliveries={deliveries} />
             </MapContainer>
           )}
           {!mounted && (

@@ -5,6 +5,7 @@ import { useFleetStore } from "@/lib/store";
 import { getDriverDisplay } from "@/lib/mock-data";
 import { DeliveryStatus } from "@fleetwise/shared";
 import type { Delivery, Address } from "@fleetwise/shared";
+import { geocodeAddress, sleep } from "@/lib/geocode";
 
 const STATUS_FLOW: DeliveryStatus[] = [
   DeliveryStatus.Pending,
@@ -65,7 +66,8 @@ export default function DeliveriesPage() {
 
   const [form, setForm] = useState({
     customerName: "",
-    address: "",
+    pickupAddress: "123 FleetWise Depot, Miami, FL",
+    dropoffAddress: "",
     driverId: "",
     vehicleId: "",
     packageDescription: "",
@@ -75,7 +77,8 @@ export default function DeliveriesPage() {
   const openNew = () => {
     setForm({
       customerName: "",
-      address: "",
+      pickupAddress: "123 FleetWise Depot, Miami, FL",
+      dropoffAddress: "",
       driverId: drivers[0]?.id ?? "",
       vehicleId: vehicles[0]?.id ?? "",
       packageDescription: "",
@@ -84,18 +87,44 @@ export default function DeliveriesPage() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
-    if (!form.customerName || !form.address) return;
+  const handleSave = async () => {
+    if (!form.customerName || !form.dropoffAddress) return;
     const now = new Date().toISOString();
     const driver = drivers.find((d) => d.id === form.driverId);
+
+    // Geocode pickup address
+    const pickupCoords = await geocodeAddress(form.pickupAddress);
+    await sleep(1500); // Respect Nominatim rate limit
+
+    // Geocode dropoff address
+    const dropoffCoords = await geocodeAddress(form.dropoffAddress);
+
+    const pickupAddr: Address = {
+      street: form.pickupAddress,
+      city: "",
+      state: "FL",
+      zipCode: "",
+      country: "US",
+      coordinates: pickupCoords ?? undefined,
+    };
+
+    const dropoffAddr: Address = {
+      street: form.dropoffAddress,
+      city: "",
+      state: "FL",
+      zipCode: "",
+      country: "US",
+      coordinates: dropoffCoords ?? undefined,
+    };
+
     addDelivery({
       id: uid(),
       fleetId: "fleet-001",
       driverId: form.driverId,
       vehicleId: form.vehicleId,
       status: DeliveryStatus.Pending,
-      pickupAddress: { street: "", city: "", state: "FL", zipCode: "", country: "US" },
-      dropoffAddress: { street: form.address, city: "", state: "FL", zipCode: "", country: "US" },
+      pickupAddress: pickupAddr,
+      dropoffAddress: dropoffAddr,
       scheduledPickupTime: now,
       scheduledDropoffTime: new Date(Date.now() + 2 * 3600000).toISOString(),
       packageDescription: form.packageDescription || "Package",
@@ -170,7 +199,7 @@ export default function DeliveriesPage() {
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Dropoff</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
@@ -248,8 +277,12 @@ export default function DeliveriesPage() {
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-gray-400">Address:</span>{" "}
+                <span className="text-gray-400">Dropoff:</span>{" "}
                 <span className="text-gray-700 truncate block">{d.dropoffAddress.street}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Pickup:</span>{" "}
+                <span className="text-gray-700 truncate block">{d.pickupAddress.street}</span>
               </div>
               <div>
                 <span className="text-gray-400">Driver:</span>{" "}
@@ -318,6 +351,10 @@ export default function DeliveriesPage() {
                 <span className="text-gray-900 text-right max-w-[200px]">{detailDelivery.dropoffAddress.street}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-500">Pickup</span>
+                <span className="text-gray-900 text-right max-w-[200px]">{detailDelivery.pickupAddress.street}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-500">ETA</span>
                 <span className="text-gray-900">
                   {new Date(detailDelivery.scheduledDropoffTime).toLocaleString()}
@@ -375,11 +412,20 @@ export default function DeliveriesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Address *</label>
                 <input
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  value={form.pickupAddress}
+                  onChange={(e) => setForm({ ...form, pickupAddress: e.target.value })}
+                  placeholder="123 FleetWise Depot, Miami, FL"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dropoff Address *</label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                  value={form.dropoffAddress}
+                  onChange={(e) => setForm({ ...form, dropoffAddress: e.target.value })}
                   placeholder="123 Main St, San Francisco"
                 />
               </div>
