@@ -288,11 +288,10 @@ export async function createUser(user: {
 
 export async function getVehicles(fleetId?: string) {
   const db = getDb();
-  let query = db.select().from(vehicles).orderBy(desc(vehicles.created_at));
-  if (fleetId) {
-    query = query.where(eq(vehicles.fleet_id, fleetId));
-  }
-  const rows = await query;
+  const query = db.select().from(vehicles).orderBy(desc(vehicles.created_at));
+  const rows = fleetId
+    ? await query.where(eq(vehicles.fleet_id, fleetId))
+    : await query;
   return rows.map(mapVehicle);
 }
 
@@ -366,11 +365,10 @@ export async function deleteVehicle(id: string): Promise<void> {
 
 export async function getDrivers(fleetId?: string) {
   const db = getDb();
-  let query = db.select().from(drivers).orderBy(desc(drivers.created_at));
-  if (fleetId) {
-    query = query.where(eq(drivers.fleet_id, fleetId));
-  }
-  const rows = await query;
+  const query = db.select().from(drivers).orderBy(desc(drivers.created_at));
+  const rows = fleetId
+    ? await query.where(eq(drivers.fleet_id, fleetId))
+    : await query;
   return rows.map(mapDriver);
 }
 
@@ -428,11 +426,10 @@ export async function deleteDriver(id: string): Promise<void> {
 
 export async function getDeliveries(fleetId?: string) {
   const db = getDb();
-  let query = db.select().from(deliveries).orderBy(desc(deliveries.created_at));
-  if (fleetId) {
-    query = query.where(eq(deliveries.fleet_id, fleetId));
-  }
-  const rows = await query;
+  const query = db.select().from(deliveries).orderBy(desc(deliveries.created_at));
+  const rows = fleetId
+    ? await query.where(eq(deliveries.fleet_id, fleetId))
+    : await query;
   return rows.map(mapDelivery);
 }
 
