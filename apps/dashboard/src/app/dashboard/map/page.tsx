@@ -132,13 +132,17 @@ function DeliveryLayer({ deliveries }: { deliveries: Delivery[] }) {
   const [fetching, setFetching] = useState(false);
 
   useEffect(() => {
-    const deliveriesWithCoords = deliveries.filter(
+    const activeDeliveries = deliveries.filter(
       (d) =>
-        d.pickupAddress?.coordinates &&
-        d.dropoffAddress?.coordinates &&
         d.status !== "delivered" &&
         d.status !== "cancelled" &&
         d.status !== "failed"
+    );
+
+    const deliveriesWithCoords = activeDeliveries.filter(
+      (d) =>
+        d.pickupAddress?.coordinates &&
+        d.dropoffAddress?.coordinates
     );
 
     if (deliveriesWithCoords.length === 0) {
@@ -189,56 +193,67 @@ function DeliveryLayer({ deliveries }: { deliveries: Delivery[] }) {
 
   return (
     <>
-      {deliveries.map((d) => {
+      {deliveries
+        .filter(
+          (d) =>
+            d.status !== "delivered" &&
+            d.status !== "cancelled" &&
+            d.status !== "failed"
+        )
+        .map((d) => {
         const pCoords = d.pickupAddress?.coordinates;
         const dCoords = d.dropoffAddress?.coordinates;
 
-        if (!pCoords || !dCoords) return null;
+        if (!pCoords && !dCoords) return null;
 
         const pickupIcon = createDeliveryIcon("#22c55e", "P");
         const dropoffIcon = createDeliveryIcon("#ef4444", "D");
-        if (!pickupIcon || !dropoffIcon) return null;
+        if (!pickupIcon && !dropoffIcon) return null;
 
         const routeGeo = routes[d.id];
 
         return (
           <span key={d.id}>
-            {/* Pickup marker (green) */}
-            <Marker
-              position={[pCoords.latitude, pCoords.longitude]}
-              icon={pickupIcon}
-            >
-              <Popup>
-                <div className="text-sm min-w-[160px]">
-                  <p className="font-semibold text-gray-900">{d.customerName}</p>
-                  <p className="text-gray-500 text-xs">Pickup: {d.pickupAddress.street}</p>
-                  <p className="text-gray-500 text-xs">
-                    Priority: <span className="font-medium capitalize">{d.priority}</span>
-                  </p>
-                  <p className="text-gray-400 text-[10px] mt-1">{d.id}</p>
-                </div>
-              </Popup>
-            </Marker>
+            {/* Pickup marker (green) - only if coordinates exist */}
+            {pCoords && pickupIcon && (
+              <Marker
+                position={[pCoords.latitude, pCoords.longitude]}
+                icon={pickupIcon}
+              >
+                <Popup>
+                  <div className="text-sm min-w-[160px]">
+                    <p className="font-semibold text-gray-900">{d.customerName}</p>
+                    <p className="text-gray-500 text-xs">Pickup: {d.pickupAddress.street}</p>
+                    <p className="text-gray-500 text-xs">
+                      Priority: <span className="font-medium capitalize">{d.priority}</span>
+                    </p>
+                    <p className="text-gray-400 text-[10px] mt-1">{d.id}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
 
-            {/* Dropoff marker (red) */}
-            <Marker
-              position={[dCoords.latitude, dCoords.longitude]}
-              icon={dropoffIcon}
-            >
-              <Popup>
-                <div className="text-sm min-w-[160px]">
-                  <p className="font-semibold text-gray-900">{d.customerName}</p>
-                  <p className="text-gray-500 text-xs">Dropoff: {d.dropoffAddress.street}</p>
-                  <p className="text-gray-500 text-xs">
-                    Priority: <span className="font-medium capitalize">{d.priority}</span>
-                  </p>
-                  <p className="text-gray-400 text-[10px] mt-1">{d.id}</p>
-                </div>
-              </Popup>
-            </Marker>
+            {/* Dropoff marker (red) - only if coordinates exist */}
+            {dCoords && dropoffIcon && (
+              <Marker
+                position={[dCoords.latitude, dCoords.longitude]}
+                icon={dropoffIcon}
+              >
+                <Popup>
+                  <div className="text-sm min-w-[160px]">
+                    <p className="font-semibold text-gray-900">{d.customerName}</p>
+                    <p className="text-gray-500 text-xs">Dropoff: {d.dropoffAddress.street}</p>
+                    <p className="text-gray-500 text-xs">
+                      Priority: <span className="font-medium capitalize">{d.priority}</span>
+                    </p>
+                    <p className="text-gray-400 text-[10px] mt-1">{d.id}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
 
-            {/* Route line */}
-            {routeGeo && routeGeo.coordinates && routeGeo.coordinates.length > 0 && (
+            {/* Route line - only when both coordinates exist */}
+            {pCoords && dCoords && routeGeo && routeGeo.coordinates && routeGeo.coordinates.length > 0 && (
               <Polyline
                 positions={routeGeo.coordinates.map((c: [number, number]) => [c[1], c[0]])}
                 pathOptions={{

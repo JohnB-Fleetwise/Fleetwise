@@ -71,10 +71,10 @@ export default function DeliveriesPage() {
 
   const [form, setForm] = useState({
     customerName: "",
-    pickupStreet: "123 FleetWise Depot",
+    pickupStreet: "340 SE 2nd St",
     pickupCity: "Miami",
     pickupState: "FL",
-    pickupZip: "33101",
+    pickupZip: "33131",
     dropoffStreet: "",
     dropoffCity: "",
     dropoffState: "FL",
@@ -88,10 +88,10 @@ export default function DeliveriesPage() {
   const openNew = () => {
     setForm({
       customerName: "",
-      pickupStreet: "123 FleetWise Depot",
+      pickupStreet: "340 SE 2nd St",
       pickupCity: "Miami",
       pickupState: "FL",
-      pickupZip: "33101",
+      pickupZip: "33131",
       dropoffStreet: "",
       dropoffCity: "",
       dropoffState: "FL",
@@ -118,6 +118,14 @@ export default function DeliveriesPage() {
 
     // Geocode dropoff address
     const dropoffCoords = await geocodeAddress(dropoffFull);
+
+    // Show geocoding warnings
+    const warnings: string[] = [];
+    if (!pickupCoords) warnings.push("Could not geocode pickup address. The pickup will not appear on the map.");
+    if (!dropoffCoords) warnings.push("Could not geocode dropoff address. The dropoff will not appear on the map.");
+    if (warnings.length > 0) {
+      alert(warnings.join("\n\n"));
+    }
 
     const pickupAddr: Address = {
       street: form.pickupStreet,
@@ -450,7 +458,7 @@ export default function DeliveriesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
                   value={form.pickupStreet}
                   onChange={(e) => setForm({ ...form, pickupStreet: e.target.value })}
-                  placeholder="123 FleetWise Depot"
+                  placeholder="340 SE 2nd St"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
