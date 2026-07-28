@@ -69,6 +69,8 @@ export default function DriversPage() {
         id: uid(),
         fleetId: "fleet-001",
         userId: "user-" + uid(),
+        name: form.name,
+        email: form.email,
         licenseNumber: form.licenseNumber,
         licenseExpiry: new Date(Date.now() + 3 * 365 * 86400000).toISOString(),
         status: "available",
