@@ -106,9 +106,13 @@ let _seeded = false;
 export async function seedDatabase(): Promise<void> {
   if (_seeded) return;
 
-  const { getDb } = await import("./db");
+  const { getDb, ensureSchema } = await import("./db");
   const { users, vehicles, drivers, deliveries } = await import("./db");
   const { eq } = await import("drizzle-orm");
+
+  // Create tables if they don't exist yet
+  await ensureSchema();
+
   const db = getDb();
 
   // Check if already seeded

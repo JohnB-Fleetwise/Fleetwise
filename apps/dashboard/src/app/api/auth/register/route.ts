@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, createUser } from "@/lib/db";
+import { getUserByEmail, createUser, ensureSchema } from "@/lib/db";
 
 function uid(): string {
   return "user-" + Math.random().toString(36).slice(2, 12);
@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Ensure database tables exist before querying
+    await ensureSchema();
 
     const existing = await getUserByEmail(email);
     if (existing) {
