@@ -107,7 +107,7 @@ export default function DashboardPage() {
         <StatCard
           title="Fleet Utilization"
           value={`${summary.fleetUtilizationPercent}%`}
-          subtitle={`${summary.totalDistanceKm} km today`}
+          subtitle={`${summary.totalDistanceKm} miles today`}
           icon={
             <svg
               className="w-6 h-6"

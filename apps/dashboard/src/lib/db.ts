@@ -251,7 +251,7 @@ function mapVehicle(row: any) {
       latitude: row.current_location_lat,
       longitude: row.current_location_lng,
     } : undefined,
-    odometerKm: row.odometer_km,
+    odometerKm: Math.round(row.odometer_km * 0.621371),
     fuelType: row.fuel_type,
     fuelCapacityL: row.fuel_capacity_l,
     assignedDriverId: row.assigned_driver_id ?? undefined,
@@ -417,7 +417,7 @@ export async function createVehicle(v: any): Promise<void> {
     status: v.status || "idle",
     current_location_lat: loc?.latitude ?? null,
     current_location_lng: loc?.longitude ?? null,
-    odometer_km: v.odometerKm || 0,
+    odometer_km: Math.round((v.odometerKm || 0) / 0.621371),
     fuel_type: v.fuelType || "regular",
     fuel_capacity_l: v.fuelCapacityL || 80,
     assigned_driver_id: v.assignedDriverId ?? null,
@@ -439,7 +439,7 @@ export async function updateVehicle(id: string, data: any): Promise<void> {
   if (data.licensePlate !== undefined) updates.license_plate = data.licensePlate;
   if (data.vin !== undefined) updates.vin = data.vin;
   if (data.status !== undefined) updates.status = data.status;
-  if (data.odometerKm !== undefined) updates.odometer_km = data.odometerKm;
+  if (data.odometerKm !== undefined) updates.odometer_km = Math.round(data.odometerKm / 0.621371);
   if (data.fuelType !== undefined) updates.fuel_type = data.fuelType;
   if (data.fuelCapacityL !== undefined) updates.fuel_capacity_l = data.fuelCapacityL;
   if (data.assignedDriverId !== undefined) updates.assigned_driver_id = data.assignedDriverId;

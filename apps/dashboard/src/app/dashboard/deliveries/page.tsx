@@ -5,7 +5,7 @@ import { useFleetStore } from "@/lib/store";
 import { getDriverDisplay } from "@/lib/mock-data";
 import { DeliveryStatus } from "@fleetwise/shared";
 import type { Delivery, Address } from "@fleetwise/shared";
-import { geocodeAddress, sleep } from "@/lib/geocode";
+import { geocodeAddress, sleep, getRouteDistance } from "@/lib/geocode";
 
 const STATUS_FLOW: DeliveryStatus[] = [
   DeliveryStatus.Pending,
@@ -54,6 +54,11 @@ function statusTimeline(current: DeliveryStatus) {
   );
 }
 
+function formatAddress(addr: Address): string {
+  const parts = [addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean);
+  return parts.join(", ") || addr.street;
+}
+
 function uid(): string {
   return "DLV-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
@@ -66,8 +71,14 @@ export default function DeliveriesPage() {
 
   const [form, setForm] = useState({
     customerName: "",
-    pickupAddress: "123 FleetWise Depot, Miami, FL",
-    dropoffAddress: "",
+    pickupStreet: "123 FleetWise Depot",
+    pickupCity: "Miami",
+    pickupState: "FL",
+    pickupZip: "33101",
+    dropoffStreet: "",
+    dropoffCity: "",
+    dropoffState: "FL",
+    dropoffZip: "",
     driverId: "",
     vehicleId: "",
     packageDescription: "",
@@ -77,8 +88,14 @@ export default function DeliveriesPage() {
   const openNew = () => {
     setForm({
       customerName: "",
-      pickupAddress: "123 FleetWise Depot, Miami, FL",
-      dropoffAddress: "",
+      pickupStreet: "123 FleetWise Depot",
+      pickupCity: "Miami",
+      pickupState: "FL",
+      pickupZip: "33101",
+      dropoffStreet: "",
+      dropoffCity: "",
+      dropoffState: "FL",
+      dropoffZip: "",
       driverId: drivers[0]?.id ?? "",
       vehicleId: vehicles[0]?.id ?? "",
       packageDescription: "",
@@ -88,34 +105,43 @@ export default function DeliveriesPage() {
   };
 
   const handleSave = async () => {
-    if (!form.customerName || !form.dropoffAddress) return;
+    if (!form.customerName || !form.dropoffStreet) return;
     const now = new Date().toISOString();
     const driver = drivers.find((d) => d.id === form.driverId);
 
+    const pickupFull = `${form.pickupStreet}, ${form.pickupCity}, ${form.pickupState} ${form.pickupZip}`;
+    const dropoffFull = `${form.dropoffStreet}, ${form.dropoffCity}, ${form.dropoffState} ${form.dropoffZip}`;
+
     // Geocode pickup address
-    const pickupCoords = await geocodeAddress(form.pickupAddress);
+    const pickupCoords = await geocodeAddress(pickupFull);
     await sleep(1500); // Respect Nominatim rate limit
 
     // Geocode dropoff address
-    const dropoffCoords = await geocodeAddress(form.dropoffAddress);
+    const dropoffCoords = await geocodeAddress(dropoffFull);
 
     const pickupAddr: Address = {
-      street: form.pickupAddress,
-      city: "",
-      state: "FL",
-      zipCode: "",
+      street: form.pickupStreet,
+      city: form.pickupCity,
+      state: form.pickupState,
+      zipCode: form.pickupZip,
       country: "US",
       coordinates: pickupCoords ?? undefined,
     };
 
     const dropoffAddr: Address = {
-      street: form.dropoffAddress,
-      city: "",
-      state: "FL",
-      zipCode: "",
+      street: form.dropoffStreet,
+      city: form.dropoffCity,
+      state: form.dropoffState,
+      zipCode: form.dropoffZip,
       country: "US",
       coordinates: dropoffCoords ?? undefined,
     };
+
+    // Get actual route distance in miles
+    let distanceMiles: number | undefined;
+    if (pickupCoords && dropoffCoords) {
+      distanceMiles = (await getRouteDistance(pickupCoords, dropoffCoords)) ?? undefined;
+    }
 
     addDelivery({
       id: uid(),
@@ -133,6 +159,7 @@ export default function DeliveriesPage() {
       customerPhone: driver?.phoneNumber ?? "",
       signatureRequired: false,
       paymentCollected: 0,
+      distanceKm: distanceMiles,
       createdAt: now,
       updatedAt: now,
     } as Delivery);
@@ -218,7 +245,7 @@ export default function DeliveriesPage() {
                 </td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{d.customerName}</td>
                 <td className="px-6 py-4 text-sm text-gray-500 max-w-[180px] truncate">
-                  {d.dropoffAddress.street}
+                  {formatAddress(d.dropoffAddress)}
                 </td>
                 <td className="px-6 py-4">{statusBadge(d.status)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{getDriverName(d.driverId)}</td>
@@ -278,11 +305,11 @@ export default function DeliveriesPage() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
                 <span className="text-gray-400">Dropoff:</span>{" "}
-                <span className="text-gray-700 truncate block">{d.dropoffAddress.street}</span>
+                <span className="text-gray-700 truncate block">{formatAddress(d.dropoffAddress)}</span>
               </div>
               <div>
                 <span className="text-gray-400">Pickup:</span>{" "}
-                <span className="text-gray-700 truncate block">{d.pickupAddress.street}</span>
+                <span className="text-gray-700 truncate block">{formatAddress(d.pickupAddress)}</span>
               </div>
               <div>
                 <span className="text-gray-400">Driver:</span>{" "}
@@ -348,11 +375,17 @@ export default function DeliveriesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Dropoff</span>
-                <span className="text-gray-900 text-right max-w-[200px]">{detailDelivery.dropoffAddress.street}</span>
+                <span className="text-gray-900 text-right max-w-[200px]">{formatAddress(detailDelivery.dropoffAddress)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Pickup</span>
-                <span className="text-gray-900 text-right max-w-[200px]">{detailDelivery.pickupAddress.street}</span>
+                <span className="text-gray-900 text-right max-w-[200px]">{formatAddress(detailDelivery.pickupAddress)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Distance</span>
+                <span className="text-gray-900">
+                  {detailDelivery.distanceKm != null ? `${detailDelivery.distanceKm} mi` : "—"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">ETA</span>
@@ -412,22 +445,87 @@ export default function DeliveriesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Street *</label>
                 <input
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
-                  value={form.pickupAddress}
-                  onChange={(e) => setForm({ ...form, pickupAddress: e.target.value })}
-                  placeholder="123 FleetWise Depot, Miami, FL"
+                  value={form.pickupStreet}
+                  onChange={(e) => setForm({ ...form, pickupStreet: e.target.value })}
+                  placeholder="123 FleetWise Depot"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pickup City *</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                    value={form.pickupCity}
+                    onChange={(e) => setForm({ ...form, pickupCity: e.target.value })}
+                    placeholder="Miami"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pickup State</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                    value={form.pickupState}
+                    onChange={(e) => setForm({ ...form, pickupState: e.target.value })}
+                    placeholder="FL"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pickup ZIP</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                    value={form.pickupZip}
+                    onChange={(e) => setForm({ ...form, pickupZip: e.target.value })}
+                    placeholder="33101"
+                  />
+                </div>
+                <div />
+              </div>
+              <hr className="border-gray-200" />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dropoff Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dropoff Street *</label>
                 <input
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
-                  value={form.dropoffAddress}
-                  onChange={(e) => setForm({ ...form, dropoffAddress: e.target.value })}
-                  placeholder="123 Main St, San Francisco"
+                  value={form.dropoffStreet}
+                  onChange={(e) => setForm({ ...form, dropoffStreet: e.target.value })}
+                  placeholder="123 Main St"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dropoff City *</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                    value={form.dropoffCity}
+                    onChange={(e) => setForm({ ...form, dropoffCity: e.target.value })}
+                    placeholder="San Francisco"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dropoff State</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                    value={form.dropoffState}
+                    onChange={(e) => setForm({ ...form, dropoffState: e.target.value })}
+                    placeholder="FL"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dropoff ZIP</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                    value={form.dropoffZip}
+                    onChange={(e) => setForm({ ...form, dropoffZip: e.target.value })}
+                    placeholder="94102"
+                  />
+                </div>
+                <div />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

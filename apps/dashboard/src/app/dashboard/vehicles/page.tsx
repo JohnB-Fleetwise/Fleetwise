@@ -150,7 +150,7 @@ export default function VehiclesPage() {
                 <td className="px-6 py-4 text-sm text-gray-600 capitalize">{v.category}</td>
                 <td className="px-6 py-4">{statusBadge(v.status)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{getVehicleDriverName(v)}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{v.odometerKm.toLocaleString()} km</td>
+                <td className="px-6 py-4 text-sm text-gray-600">{v.odometerKm.toLocaleString()} mi</td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
@@ -212,7 +212,7 @@ export default function VehiclesPage() {
               </div>
               <div>
                 <span className="text-gray-400">Mileage:</span>{" "}
-                <span className="text-gray-700">{v.odometerKm.toLocaleString()} km</span>
+                <span className="text-gray-700">{v.odometerKm.toLocaleString()} mi</span>
               </div>
             </div>
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">

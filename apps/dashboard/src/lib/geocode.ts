@@ -51,6 +51,28 @@ export async function geocodeAddress(
 }
 
 /**
+ * Get driving distance in miles between two points using OSRM.
+ * Returns null on failure.
+ */
+export async function getRouteDistance(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number }
+): Promise<number | null> {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=false`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code !== "Ok" || !data.routes?.[0]) return null;
+    const meters = data.routes[0].distance;
+    return Math.round(meters * 0.000621371 * 10) / 10; // miles, rounded to 1 decimal
+  } catch (err) {
+    console.error("[route] Error fetching route distance:", err);
+    return null;
+  }
+}
+
+/**
  * Sleep for a given number of milliseconds.
  */
 export function sleep(ms: number): Promise<void> {
