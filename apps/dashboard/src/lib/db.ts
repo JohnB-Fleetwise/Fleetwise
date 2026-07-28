@@ -687,8 +687,8 @@ export async function getFleetSummary(fleetId?: string) {
     activeDrivers: activeDrivers?.count ?? 0,
     deliveriesToday: deliveriesToday?.count ?? 0,
     fleetUtilizationPercent: tv > 0 ? Math.round((av / tv) * 100) : 0,
-    totalDistanceKm: tv > 0 ? 1240 : 0,
-    fuelCostTotal: tv > 0 ? 38450 : 0,
+    totalDistanceKm: 0,
+    fuelCostTotal: 0,
     maintenanceAlerts: maintenanceAlerts?.count ?? 0,
   };
 }

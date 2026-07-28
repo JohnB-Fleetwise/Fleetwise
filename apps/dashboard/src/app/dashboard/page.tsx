@@ -18,6 +18,11 @@ export default function DashboardPage() {
       }
     }
     fetchSummary();
+
+    // Re-fetch when tab regains focus or user navigates back
+    const handleFocus = () => fetchSummary();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   if (!summary) {
@@ -122,41 +127,17 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Quick status row */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Fleet Status */}
+      <div className="mt-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Fleet Status
           </h2>
           <div className="space-y-3">
-            <StatusRow label="On Delivery" count={12} color="bg-green-500" />
-            <StatusRow label="Available" count={8} color="bg-blue-500" />
+            <StatusRow label="Total Vehicles" count={summary.totalVehicles} color="bg-blue-500" />
+            <StatusRow label="Active Drivers" count={summary.activeDrivers} color="bg-green-500" />
             <StatusRow label="In Maintenance" count={summary.maintenanceAlerts} color="bg-amber-500" />
-            <StatusRow label="Offline" count={3} color="bg-gray-400" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Recent Activity
-          </h2>
-          <div className="space-y-3">
-            <ActivityItem
-              text="Delivery #1042 completed by Sarah Chen"
-              time="2 min ago"
-            />
-            <ActivityItem
-              text="Vehicle VAN-007 entered maintenance"
-              time="15 min ago"
-            />
-            <ActivityItem
-              text="Fuel record added for TRUCK-003"
-              time="42 min ago"
-            />
-            <ActivityItem
-              text="Driver Mike Torres started shift"
-              time="1 hour ago"
-            />
+            <StatusRow label="Deliveries Today" count={summary.deliveriesToday} color="bg-purple-500" />
           </div>
         </div>
       </div>
@@ -180,15 +161,6 @@ function StatusRow({
         <span className="text-sm text-gray-600">{label}</span>
       </div>
       <span className="text-sm font-semibold text-gray-900">{count}</span>
-    </div>
-  );
-}
-
-function ActivityItem({ text, time }: { text: string; time: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-sm text-gray-700">{text}</span>
-      <span className="text-xs text-gray-400 whitespace-nowrap">{time}</span>
     </div>
   );
 }
