@@ -48,8 +48,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Registration error:", error);
+    const message = error instanceof Error && error.message?.includes("DATABASE_URL")
+      ? "Database connection is not configured. Please set DATABASE_URL."
+      : "Internal server error.";
     return NextResponse.json(
-      { error: "Internal server error." },
+      { error: message },
       { status: 500 }
     );
   }

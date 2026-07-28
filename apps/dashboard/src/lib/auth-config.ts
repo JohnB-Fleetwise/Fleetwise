@@ -16,27 +16,32 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
-        // Ensure DB is seeded on first request
-        const { ensureDbInitialized } = await import("@/lib/db-setup");
-        await ensureDbInitialized();
+        try {
+          // Ensure DB is seeded on first request
+          const { ensureDbInitialized } = await import("@/lib/db-setup");
+          await ensureDbInitialized();
 
-        const user = await getUserByEmail(credentials.email);
-        if (!user) {
+          const user = await getUserByEmail(credentials.email);
+          if (!user) {
+            return null;
+          }
+
+          const isValid = await bcrypt.compare(credentials.password, user.password_hash);
+          if (!isValid) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.display_name,
+            role: user.role,
+            fleetId: user.fleet_id,
+          };
+        } catch (error) {
+          console.error("[Auth] authorize error:", error);
           return null;
         }
-
-        const isValid = await bcrypt.compare(credentials.password, user.password_hash);
-        if (!isValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.display_name,
-          role: user.role,
-          fleetId: user.fleet_id,
-        };
       },
     }),
   ],

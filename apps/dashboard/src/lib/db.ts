@@ -126,10 +126,107 @@ export function getDb() {
   return _db;
 }
 
-// For backwards compat — no-op schema init
+export function getDbSafe() {
+  if (!process.env.DATABASE_URL) return null;
+  return getDb();
+}
+
+// Auto-create tables if they don't exist (for first-time setup)
 export async function ensureSchema(): Promise<void> {
-  // PostgreSQL schema is managed via drizzle-kit migrations
-  getDb();
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS "users" (
+      "id" text PRIMARY KEY NOT NULL,
+      "fleet_id" text NOT NULL,
+      "email" text NOT NULL UNIQUE,
+      "password_hash" text NOT NULL,
+      "display_name" text NOT NULL,
+      "role" text NOT NULL DEFAULT 'admin',
+      "created_at" timestamp NOT NULL DEFAULT now(),
+      "updated_at" timestamp NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS "vehicles" (
+      "id" text PRIMARY KEY NOT NULL,
+      "fleet_id" text NOT NULL,
+      "name" text NOT NULL,
+      "make" text NOT NULL DEFAULT '',
+      "model" text NOT NULL DEFAULT '',
+      "year" integer NOT NULL,
+      "license_plate" text NOT NULL,
+      "vin" text NOT NULL DEFAULT '',
+      "status" text NOT NULL DEFAULT 'idle',
+      "current_location_lat" real,
+      "current_location_lng" real,
+      "odometer_km" real NOT NULL DEFAULT 0,
+      "fuel_type" text NOT NULL DEFAULT 'regular',
+      "fuel_capacity_l" real NOT NULL DEFAULT 80,
+      "assigned_driver_id" text,
+      "category" text NOT NULL DEFAULT 'van',
+      "insurance_expiry" text NOT NULL,
+      "registration_expiry" text NOT NULL,
+      "created_at" timestamp NOT NULL DEFAULT now(),
+      "updated_at" timestamp NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS "drivers" (
+      "id" text PRIMARY KEY NOT NULL,
+      "fleet_id" text NOT NULL,
+      "user_id" text NOT NULL,
+      "name" text NOT NULL DEFAULT '',
+      "email" text NOT NULL DEFAULT '',
+      "license_number" text NOT NULL,
+      "license_expiry" text NOT NULL,
+      "assigned_vehicle_id" text,
+      "status" text NOT NULL DEFAULT 'available',
+      "rating" real NOT NULL DEFAULT 0,
+      "total_deliveries" integer NOT NULL DEFAULT 0,
+      "phone_number" text NOT NULL DEFAULT '',
+      "created_at" timestamp NOT NULL DEFAULT now(),
+      "updated_at" timestamp NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS "deliveries" (
+      "id" text PRIMARY KEY NOT NULL,
+      "fleet_id" text NOT NULL,
+      "driver_id" text NOT NULL,
+      "vehicle_id" text NOT NULL,
+      "status" text NOT NULL DEFAULT 'pending',
+      "pickup_street" text NOT NULL DEFAULT '',
+      "pickup_city" text NOT NULL DEFAULT '',
+      "pickup_state" text NOT NULL DEFAULT 'FL',
+      "pickup_zip" text NOT NULL DEFAULT '',
+      "pickup_country" text NOT NULL DEFAULT 'US',
+      "pickup_lat" real,
+      "pickup_lng" real,
+      "dropoff_street" text NOT NULL DEFAULT '',
+      "dropoff_city" text NOT NULL DEFAULT '',
+      "dropoff_state" text NOT NULL DEFAULT 'FL',
+      "dropoff_zip" text NOT NULL DEFAULT '',
+      "dropoff_country" text NOT NULL DEFAULT 'US',
+      "dropoff_lat" real,
+      "dropoff_lng" real,
+      "scheduled_pickup_time" text NOT NULL,
+      "scheduled_dropoff_time" text NOT NULL,
+      "actual_pickup_time" text,
+      "actual_dropoff_time" text,
+      "package_description" text NOT NULL DEFAULT 'Package',
+      "package_weight_kg" real,
+      "special_instructions" text,
+      "priority" text NOT NULL DEFAULT 'normal',
+      "customer_name" text NOT NULL DEFAULT '',
+      "customer_phone" text NOT NULL DEFAULT '',
+      "signature_required" boolean NOT NULL DEFAULT false,
+      "payment_collected" integer NOT NULL DEFAULT 0,
+      "distance_km" real,
+      "estimated_duration_min" integer,
+      "created_at" timestamp NOT NULL DEFAULT now(),
+      "updated_at" timestamp NOT NULL DEFAULT now()
+    );
+  `;
 }
 
 export function isSeeded(): boolean {
