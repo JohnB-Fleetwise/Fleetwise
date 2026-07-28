@@ -6,8 +6,7 @@
 // Skips seeding if fleet-001 already has vehicles.
 
 import bcrypt from "bcryptjs";
-import { getDb } from "./db-connection";
-import { users, vehicles, drivers, deliveries } from "./schema";
+import { getDb, users, vehicles, drivers, deliveries } from "./db";
 import { eq, sql } from "drizzle-orm";
 
 // ─── Helpers ───────────────────────────────────────────
