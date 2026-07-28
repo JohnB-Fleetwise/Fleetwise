@@ -148,11 +148,11 @@ export default function MapPage() {
   const centerLat =
     activeVehicles.length > 0
       ? activeVehicles.reduce((s, v) => s + v.currentLocation!.latitude, 0) / activeVehicles.length
-      : 36.7;
+      : 28.5;
   const centerLng =
     activeVehicles.length > 0
       ? activeVehicles.reduce((s, v) => s + v.currentLocation!.longitude, 0) / activeVehicles.length
-      : -120.5;
+      : -81.4;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] -m-4 md:-m-6">

@@ -87,6 +87,7 @@ export default function VehiclesPage() {
         licensePlate: form.licensePlate,
         vin: form.vin,
         status: "idle",
+        currentLocation: { latitude: 28.5 + (Math.random() - 0.5) * 0.5, longitude: -81.4 + (Math.random() - 0.5) * 0.5 },
         odometerKm: 0,
         fuelType: "regular",
         fuelCapacityL: 80,
