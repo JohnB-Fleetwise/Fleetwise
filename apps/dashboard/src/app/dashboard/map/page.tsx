@@ -1,10 +1,10 @@
-// @ts-nocheck
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useFleetStore } from "@/lib/store";
 import { getVehicleDriverName } from "@/lib/mock-data";
 import type { Vehicle, Delivery } from "@fleetwise/shared";
+import "leaflet/dist/leaflet.css";
 import dynamic from "next/dynamic";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
@@ -30,7 +30,8 @@ function statusColor(status: string): string {
 
 function createIcon(color: string, label?: string) {
   if (typeof window === "undefined") return undefined;
-  const L = (window as any).L ?? require("leaflet");
+  const L = (window as any).L;
+  if (!L) return undefined;
   return L.divIcon({
     className: "custom-marker",
     html: `<div style="
@@ -50,7 +51,8 @@ function createIcon(color: string, label?: string) {
 
 function createDeliveryIcon(color: string, letter: string) {
   if (typeof window === "undefined") return undefined;
-  const L = (window as any).L ?? require("leaflet");
+  const L = (window as any).L;
+  if (!L) return undefined;
   return L.divIcon({
     className: "custom-marker",
     html: `<div style="
