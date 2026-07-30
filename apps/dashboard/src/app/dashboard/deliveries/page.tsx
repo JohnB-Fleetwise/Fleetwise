@@ -64,7 +64,7 @@ function uid(): string {
 }
 
 export default function DeliveriesPage() {
-  const { deliveries, drivers, vehicles, addDelivery, updateDelivery, deleteDelivery } = useFleetStore();
+  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, deleteDelivery } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -86,6 +86,7 @@ export default function DeliveriesPage() {
   });
 
   const openNew = () => {
+    const firstAvailable = drivers.find((d) => d.status === "available");
     setForm({
       customerName: "",
       pickupStreet: "340 SE 2nd St",
@@ -96,8 +97,8 @@ export default function DeliveriesPage() {
       dropoffCity: "",
       dropoffState: "FL",
       dropoffZip: "",
-      driverId: drivers[0]?.id ?? "",
-      vehicleId: vehicles[0]?.id ?? "",
+      driverId: firstAvailable?.id ?? "",
+      vehicleId: firstAvailable?.assignedVehicleId ?? "",
       packageDescription: "",
       priority: "normal",
     });
@@ -106,6 +107,10 @@ export default function DeliveriesPage() {
 
   const handleSave = async () => {
     if (!form.customerName || !form.dropoffStreet) return;
+    if (!form.driverId || !form.vehicleId) {
+      alert("Please select both a driver and a vehicle.");
+      return;
+    }
     const now = new Date().toISOString();
     const driver = drivers.find((d) => d.id === form.driverId);
 
@@ -151,27 +156,35 @@ export default function DeliveriesPage() {
       distanceMiles = (await getRouteDistance(pickupCoords, dropoffCoords)) ?? undefined;
     }
 
-    addDelivery({
-      id: uid(),
-      fleetId: "fleet-001",
-      driverId: form.driverId,
-      vehicleId: form.vehicleId,
-      status: DeliveryStatus.Pending,
-      pickupAddress: pickupAddr,
-      dropoffAddress: dropoffAddr,
-      scheduledPickupTime: now,
-      scheduledDropoffTime: new Date(Date.now() + 2 * 3600000).toISOString(),
-      packageDescription: form.packageDescription || "Package",
-      priority: form.priority,
-      customerName: form.customerName,
-      customerPhone: driver?.phoneNumber ?? "",
-      signatureRequired: false,
-      paymentCollected: 0,
-      distanceKm: distanceMiles,
-      createdAt: now,
-      updatedAt: now,
-    } as Delivery);
-    setShowForm(false);
+    try {
+      await addDelivery({
+        id: uid(),
+        fleetId: "fleet-001",
+        driverId: form.driverId,
+        vehicleId: form.vehicleId,
+        status: DeliveryStatus.Pending,
+        pickupAddress: pickupAddr,
+        dropoffAddress: dropoffAddr,
+        scheduledPickupTime: now,
+        scheduledDropoffTime: new Date(Date.now() + 2 * 3600000).toISOString(),
+        packageDescription: form.packageDescription || "Package",
+        priority: form.priority,
+        customerName: form.customerName,
+        customerPhone: driver?.phoneNumber ?? "",
+        signatureRequired: false,
+        paymentCollected: 0,
+        distanceKm: distanceMiles,
+        createdAt: now,
+        updatedAt: now,
+      } as Delivery);
+
+      // Update driver status to on_delivery
+      await updateDriver(form.driverId, { status: "on_delivery" });
+
+      setShowForm(false);
+    } catch (err) {
+      alert("Failed to create delivery: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
   };
 
   const advanceStatus = (id: string) => {
@@ -541,7 +554,15 @@ export default function DeliveriesPage() {
                   <select
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none bg-white"
                     value={form.driverId}
-                    onChange={(e) => setForm({ ...form, driverId: e.target.value })}
+                    onChange={(e) => {
+                      const newDriverId = e.target.value;
+                      const newDriver = drivers.find((d) => d.id === newDriverId);
+                      setForm({
+                        ...form,
+                        driverId: newDriverId,
+                        vehicleId: newDriver?.assignedVehicleId ?? "",
+                      });
+                    }}
                   >
                     {drivers.map((dr) => (
                       <option key={dr.id} value={dr.id}>
