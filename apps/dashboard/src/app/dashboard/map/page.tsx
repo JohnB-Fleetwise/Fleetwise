@@ -68,11 +68,29 @@ function createDeliveryIcon(color: string, letter: string) {
   });
 }
 
-function VehicleMarkers({ vehicles }: { vehicles: Vehicle[] }) {
+function VehicleMarkers({ vehicles, deliveries }: { vehicles: Vehicle[]; deliveries: Delivery[] }) {
   if (typeof window === "undefined") return null;
+
+  // Compute set of vehicle IDs that are assigned to an active (in-progress) delivery
+  const activeDeliveryVehicleIds = new Set(
+    deliveries
+      .filter(
+        (d) =>
+          d.status !== "delivered" &&
+          d.status !== "cancelled" &&
+          d.status !== "failed"
+      )
+      .map((d) => d.vehicleId)
+  );
+
+  // Only show vehicles that are "active" OR assigned to an active delivery
+  const visibleVehicles = vehicles.filter(
+    (v) => v.status === "active" || activeDeliveryVehicleIds.has(v.id)
+  );
+
   return (
     <>
-      {vehicles.map((v) => {
+      {visibleVehicles.map((v) => {
         if (!v.currentLocation) return null;
         const icon = createIcon(statusColor(v.status));
         if (!icon) return null;
@@ -274,13 +292,30 @@ function VehicleSidebar({
   vehicles,
   selectedId,
   onSelect,
+  deliveries,
 }: {
   vehicles: Vehicle[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  deliveries: Delivery[];
 }) {
+  // Compute count of vehicles hidden from the map
+  const activeDeliveryVehicleIds = new Set(
+    deliveries
+      .filter(
+        (d) =>
+          d.status !== "delivered" &&
+          d.status !== "cancelled" &&
+          d.status !== "failed"
+      )
+      .map((d) => d.vehicleId)
+  );
+  const hiddenCount = vehicles.filter(
+    (v) => v.status !== "active" && !activeDeliveryVehicleIds.has(v.id)
+  ).length;
+
   return (
-    <div className="bg-white border-b md:border-b-0 md:border-l border-gray-200 md:w-80 md:flex-shrink-0 overflow-y-auto">
+    <div className="bg-white border-b md:border-b-0 md:border-l border-gray-200 md:w-80 md:flex-shrink-0 overflow-y-auto flex flex-col">
       <div className="p-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-900">Vehicles</h2>
         <p className="text-xs text-gray-500 mt-0.5">
@@ -290,7 +325,7 @@ function VehicleSidebar({
           offline
         </p>
       </div>
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-gray-50 flex-1 overflow-y-auto">
         {vehicles.map((v) => (
           <button
             key={v.id}
@@ -318,6 +353,13 @@ function VehicleSidebar({
           </button>
         ))}
       </div>
+      {hiddenCount > 0 && (
+        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+          <p className="text-xs text-gray-500">
+            {hiddenCount} idle/maintenance vehicle{hiddenCount !== 1 ? "s" : ""} not shown on map
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -345,7 +387,7 @@ export default function MapPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)] -m-4 md:-m-6">
       {/* Mobile sidebar at top */}
       <div className="md:hidden">
-        <VehicleSidebar vehicles={vehicles} selectedId={selectedVehicle} onSelect={setSelectedVehicle} />
+        <VehicleSidebar vehicles={vehicles} selectedId={selectedVehicle} onSelect={setSelectedVehicle} deliveries={deliveries} />
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
@@ -362,7 +404,7 @@ export default function MapPage() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <VehicleMarkers vehicles={vehicles} />
+              <VehicleMarkers vehicles={vehicles} deliveries={deliveries} />
               <DeliveryLayer deliveries={deliveries} />
             </MapContainer>
           )}
@@ -375,7 +417,7 @@ export default function MapPage() {
 
         {/* Desktop sidebar */}
         <div className="hidden md:block">
-          <VehicleSidebar vehicles={vehicles} selectedId={selectedVehicle} onSelect={setSelectedVehicle} />
+          <VehicleSidebar vehicles={vehicles} selectedId={selectedVehicle} onSelect={setSelectedVehicle} deliveries={deliveries} />
         </div>
       </div>
     </div>
