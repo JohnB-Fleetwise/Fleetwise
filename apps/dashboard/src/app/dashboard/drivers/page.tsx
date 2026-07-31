@@ -25,7 +25,7 @@ function uid(): string {
 }
 
 export default function DriversPage() {
-  const { drivers, vehicles, addDriver, updateDriver, deleteDriver, assignDriverVehicle } = useFleetStore();
+  const { drivers, vehicles, addDriver, updateDriver, deleteDriver, updateVehicle } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -89,10 +89,9 @@ export default function DriversPage() {
     setConfirmDelete(null);
   };
 
-  const getVehicleName = (vehicleId?: string) => {
-    if (!vehicleId) return "—";
-    const v = vehicles.find((v) => v.id === vehicleId);
-    return v ? v.name : "—";
+  const getVehicleName = (driverId: string) => {
+    const vehicle = vehicles.find((v) => v.assignedDriverId === driverId);
+    return vehicle ? vehicle.name : "—";
   };
 
   return (
@@ -140,7 +139,7 @@ export default function DriversPage() {
                   <td className="px-6 py-4">{statusBadge(d.status)}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">{getVehicleName(d.assignedVehicleId)}</span>
+                      <span className="text-sm text-gray-600">{getVehicleName(d.id)}</span>
                       <button
                         onClick={() => setAssigningDriver(d.id)}
                         className="text-xs text-fleet-600 hover:text-fleet-700 font-medium"
@@ -217,7 +216,7 @@ export default function DriversPage() {
                 </div>
                 <div className="col-span-2">
                   <span className="text-gray-400">Vehicle:</span>{" "}
-                  <span className="text-gray-700">{getVehicleName(d.assignedVehicleId)}</span>
+                  <span className="text-gray-700">{getVehicleName(d.id)}</span>
                   <button
                     onClick={() => setAssigningDriver(d.id)}
                     className="ml-2 text-fleet-600 font-medium"
@@ -254,7 +253,11 @@ export default function DriversPage() {
             <div className="space-y-2 max-h-60 overflow-y-auto">
               <button
                 onClick={() => {
-                  assignDriverVehicle(assigningDriver, undefined);
+                  // Unassign: clear the vehicle that this driver was assigned to
+                  const currentVehicle = vehicles.find((v) => v.assignedDriverId === assigningDriver);
+                  if (currentVehicle) {
+                    updateVehicle(currentVehicle.id, { assignedDriverId: undefined as any });
+                  }
                   setAssigningDriver(null);
                 }}
                 className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-50 text-gray-500"
@@ -265,7 +268,13 @@ export default function DriversPage() {
                 <button
                   key={v.id}
                   onClick={() => {
-                    assignDriverVehicle(assigningDriver, v.id);
+                    // Clear previous assignment from the old vehicle first
+                    const oldVehicle = vehicles.find((veh) => veh.assignedDriverId === assigningDriver);
+                    if (oldVehicle && oldVehicle.id !== v.id) {
+                      updateVehicle(oldVehicle.id, { assignedDriverId: undefined as any });
+                    }
+                    // Assign driver to the new vehicle
+                    updateVehicle(v.id, { assignedDriverId: assigningDriver });
                     setAssigningDriver(null);
                   }}
                   className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-fleet-50 text-gray-700 flex items-center justify-between"

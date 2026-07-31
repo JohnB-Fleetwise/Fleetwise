@@ -14,7 +14,6 @@ interface FleetStore {
   addDriver: (d: Driver) => Promise<void>;
   updateDriver: (id: string, data: Partial<Driver>) => Promise<void>;
   deleteDriver: (id: string) => Promise<void>;
-  assignDriverVehicle: (driverId: string, vehicleId: string | undefined) => Promise<void>;
   addDelivery: (d: Delivery) => Promise<void>;
   updateDelivery: (id: string, data: Partial<Delivery>) => Promise<void>;
   deleteDelivery: (id: string) => Promise<void>;
@@ -128,30 +127,6 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     setDrivers((prev) => prev.filter((dr) => dr.id !== id));
   }, []);
 
-  const assignDriverVehicle = useCallback(async (driverId: string, vehicleId: string | undefined) => {
-    await fetchJson(`/api/drivers/${driverId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignedVehicleId: vehicleId }),
-    });
-    setDrivers((prev) =>
-      prev.map((dr) =>
-        dr.id === driverId
-          ? { ...dr, assignedVehicleId: vehicleId, updatedAt: new Date().toISOString() }
-          : dr
-      )
-    );
-    if (vehicleId) {
-      setVehicles((prev) =>
-        prev.map((v) =>
-          v.id === vehicleId
-            ? { ...v, assignedDriverId: driverId, updatedAt: new Date().toISOString() }
-            : v
-        )
-      );
-    }
-  }, []);
-
   const addDelivery = useCallback(async (d: Delivery) => {
     const created = await fetchJson("/api/deliveries", {
       method: "POST",
@@ -190,7 +165,6 @@ export function FleetProvider({ children }: { children: ReactNode }) {
         addDriver,
         updateDriver,
         deleteDriver,
-        assignDriverVehicle,
         addDelivery,
         updateDelivery,
         deleteDelivery,
