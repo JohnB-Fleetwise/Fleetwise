@@ -77,11 +77,10 @@ export default function MaintenancePage() {
     // Mark vehicle as maintenance
     await updateVehicle(form.vehicleId, { status: "maintenance" });
 
-    // If the vehicle had an assigned driver, free them
+    // If the vehicle had an assigned driver, free them (the assignment is on the vehicle)
     if (vehicle?.assignedDriverId) {
       await updateDriver(vehicle.assignedDriverId, {
         status: "available",
-        assignedVehicleId: undefined,
       });
     }
 

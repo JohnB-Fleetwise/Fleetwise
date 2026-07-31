@@ -43,7 +43,6 @@ export interface Driver {
   email?: string;
   licenseNumber: string;
   licenseExpiry: string;
-  assignedVehicleId?: string;
   status: DriverStatus;
   rating: number; // 1-5
   totalDeliveries: number;

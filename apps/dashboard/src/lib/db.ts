@@ -58,7 +58,6 @@ export const drivers = pgTable("drivers", {
   email: text("email").notNull().default(""),
   license_number: text("license_number").notNull(),
   license_expiry: text("license_expiry").notNull(),
-  assigned_vehicle_id: text("assigned_vehicle_id"),
   status: text("status").notNull().default("available"),
   rating: real("rating").notNull().default(0),
   total_deliveries: integer("total_deliveries").notNull().default(0),
@@ -172,15 +171,14 @@ export async function ensureSchema(): Promise<void> {
   `;
   await sql`
     CREATE TABLE IF NOT EXISTS "drivers" (
-      "id" text PRIMARY KEY NOT NULL,
-      "fleet_id" text NOT NULL,
-      "user_id" text NOT NULL,
-      "name" text NOT NULL DEFAULT '',
-      "email" text NOT NULL DEFAULT '',
-      "license_number" text NOT NULL,
-      "license_expiry" text NOT NULL,
-      "assigned_vehicle_id" text,
-      "status" text NOT NULL DEFAULT 'available',
+              "id" text PRIMARY KEY NOT NULL,
+              "fleet_id" text NOT NULL,
+              "user_id" text NOT NULL,
+              "name" text NOT NULL DEFAULT '',
+              "email" text NOT NULL DEFAULT '',
+              "license_number" text NOT NULL,
+              "license_expiry" text NOT NULL,
+              "status" text NOT NULL DEFAULT 'available',
       "rating" real NOT NULL DEFAULT 0,
       "total_deliveries" integer NOT NULL DEFAULT 0,
       "phone_number" text NOT NULL DEFAULT '',
@@ -264,16 +262,15 @@ function mapVehicle(row: any) {
 }
 
 function mapDriver(row: any) {
-  return {
-    id: row.id,
-    fleetId: row.fleet_id,
-    userId: row.user_id,
-    name: row.name,
-    email: row.email,
-    licenseNumber: row.license_number,
-    licenseExpiry: row.license_expiry,
-    assignedVehicleId: row.assigned_vehicle_id ?? undefined,
-    status: row.status,
+      return {
+        id: row.id,
+        fleetId: row.fleet_id,
+        userId: row.user_id,
+        name: row.name,
+        email: row.email,
+        licenseNumber: row.license_number,
+        licenseExpiry: row.license_expiry,
+        status: row.status,
     rating: row.rating,
     totalDeliveries: row.total_deliveries,
     phoneNumber: row.phone_number,
@@ -482,15 +479,14 @@ export async function createDriver(d: any): Promise<void> {
   const db = getDb();
   const now = new Date();
   await db.insert(drivers).values({
-    id: d.id,
-    fleet_id: d.fleetId,
-    user_id: d.userId,
-    name: d.name || "",
-    email: d.email || "",
-    license_number: d.licenseNumber,
-    license_expiry: d.licenseExpiry,
-    assigned_vehicle_id: d.assignedVehicleId ?? null,
-    status: d.status || "available",
+          id: d.id,
+          fleet_id: d.fleetId,
+          user_id: d.userId,
+          name: d.name || "",
+          email: d.email || "",
+          license_number: d.licenseNumber,
+          license_expiry: d.licenseExpiry,
+          status: d.status || "available",
     rating: d.rating || 0,
     total_deliveries: d.totalDeliveries || 0,
     phone_number: d.phoneNumber || "",
@@ -506,8 +502,7 @@ export async function updateDriver(id: string, data: any): Promise<void> {
   if (data.email !== undefined) updates.email = data.email;
   if (data.licenseNumber !== undefined) updates.license_number = data.licenseNumber;
   if (data.licenseExpiry !== undefined) updates.license_expiry = data.licenseExpiry;
-  if (data.assignedVehicleId !== undefined) updates.assigned_vehicle_id = data.assignedVehicleId;
-  if (data.status !== undefined) updates.status = data.status;
+        if (data.status !== undefined) updates.status = data.status;
   if (data.rating !== undefined) updates.rating = data.rating;
   if (data.totalDeliveries !== undefined) updates.total_deliveries = data.totalDeliveries;
   if (data.phoneNumber !== undefined) updates.phone_number = data.phoneNumber;

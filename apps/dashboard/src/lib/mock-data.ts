@@ -61,15 +61,15 @@ const SEED_VEHICLES = [
 ];
 
 const SEED_DRIVERS = [
-  { id: "D-001", userId: "user-001", name: "Sarah Chen", email: "sarah.chen@fleetwise.com", licenseNumber: "DL-FL-1234567", licenseExpiryDays: 500, assignedVehicleId: "V-001", status: "on_delivery", rating: 4.8, totalDeliveries: 1240, phone: "+1-305-555-0101", createdDays: -300 },
-  { id: "D-002", userId: "user-002", name: "Marcus Johnson", email: "marcus.j@fleetwise.com", licenseNumber: "DL-FL-2345678", licenseExpiryDays: 400, assignedVehicleId: "V-002", status: "on_delivery", rating: 4.5, totalDeliveries: 890, phone: "+1-407-555-0102", createdDays: -200 },
-  { id: "D-003", userId: "user-003", name: "Javier Rodriguez", email: "javier.r@fleetwise.com", licenseNumber: "DL-FL-3456789", licenseExpiryDays: 600, assignedVehicleId: "V-003", status: "available", rating: 4.9, totalDeliveries: 2100, phone: "+1-813-555-0103", createdDays: -500 },
-  { id: "D-004", userId: "user-004", name: "Emily Park", email: "emily.park@fleetwise.com", licenseNumber: "DL-FL-4567890", licenseExpiryDays: 300, assignedVehicleId: "V-004", status: "available", rating: 4.2, totalDeliveries: 430, phone: "+1-904-555-0104", createdDays: -150 },
-  { id: "D-005", userId: "user-005", name: "David Kim", email: "david.kim@fleetwise.com", licenseNumber: "DL-FL-5678901", licenseExpiryDays: 200, assignedVehicleId: "V-005", status: "on_delivery", rating: 4.7, totalDeliveries: 1560, phone: "+1-954-555-0105", createdDays: -250 },
-  { id: "D-006", userId: "user-006", name: "Lisa Thompson", email: "lisa.t@fleetwise.com", licenseNumber: "DL-FL-6789012", licenseExpiryDays: 450, assignedVehicleId: "V-006", status: "on_delivery", rating: 3.9, totalDeliveries: 320, phone: "+1-850-555-0106", createdDays: -100 },
-  { id: "D-007", userId: "user-007", name: "Robert Nguyen", email: "robert.n@fleetwise.com", licenseNumber: "DL-FL-7890123", licenseExpiryDays: 350, assignedVehicleId: "V-010", status: "available", rating: 4.6, totalDeliveries: 780, phone: "+1-386-555-0107", createdDays: -180 },
-  { id: "D-008", userId: "user-008", name: "Angela Martinez", email: "angela.m@fleetwise.com", licenseNumber: "DL-FL-8901234", licenseExpiryDays: 250, assignedVehicleId: "V-008", status: "offline", rating: 4.3, totalDeliveries: 560, phone: "+1-239-555-0108", createdDays: -120 },
-];
+      { id: "D-001", userId: "user-001", name: "Sarah Chen", email: "sarah.chen@fleetwise.com", licenseNumber: "DL-FL-1234567", licenseExpiryDays: 500, status: "on_delivery", rating: 4.8, totalDeliveries: 1240, phone: "+1-305-555-0101", createdDays: -300 },
+      { id: "D-002", userId: "user-002", name: "Marcus Johnson", email: "marcus.j@fleetwise.com", licenseNumber: "DL-FL-2345678", licenseExpiryDays: 400, status: "on_delivery", rating: 4.5, totalDeliveries: 890, phone: "+1-407-555-0102", createdDays: -200 },
+      { id: "D-003", userId: "user-003", name: "Javier Rodriguez", email: "javier.r@fleetwise.com", licenseNumber: "DL-FL-3456789", licenseExpiryDays: 600, status: "available", rating: 4.9, totalDeliveries: 2100, phone: "+1-813-555-0103", createdDays: -500 },
+      { id: "D-004", userId: "user-004", name: "Emily Park", email: "emily.park@fleetwise.com", licenseNumber: "DL-FL-4567890", licenseExpiryDays: 300, status: "available", rating: 4.2, totalDeliveries: 430, phone: "+1-904-555-0104", createdDays: -150 },
+      { id: "D-005", userId: "user-005", name: "David Kim", email: "david.kim@fleetwise.com", licenseNumber: "DL-FL-5678901", licenseExpiryDays: 200, status: "on_delivery", rating: 4.7, totalDeliveries: 1560, phone: "+1-954-555-0105", createdDays: -250 },
+      { id: "D-006", userId: "user-006", name: "Lisa Thompson", email: "lisa.t@fleetwise.com", licenseNumber: "DL-FL-6789012", licenseExpiryDays: 450, status: "on_delivery", rating: 3.9, totalDeliveries: 320, phone: "+1-850-555-0106", createdDays: -100 },
+      { id: "D-007", userId: "user-007", name: "Robert Nguyen", email: "robert.n@fleetwise.com", licenseNumber: "DL-FL-7890123", licenseExpiryDays: 350, status: "available", rating: 4.6, totalDeliveries: 780, phone: "+1-386-555-0107", createdDays: -180 },
+      { id: "D-008", userId: "user-008", name: "Angela Martinez", email: "angela.m@fleetwise.com", licenseNumber: "DL-FL-8901234", licenseExpiryDays: 250, status: "offline", rating: 4.3, totalDeliveries: 560, phone: "+1-239-555-0108", createdDays: -120 },
+    ];
 
 const SEED_DELIVERIES = [
   { id: "DLV-001", driverId: "D-001", vehicleId: "V-001", status: "in_transit", pLat: MIA.lat, pLng: MIA.lng, pStreet: "123 Market St", pCity: "Miami", dSpread: 2, schedPickDays: -1, schedDropDays: 0, desc: "Office supplies (3 boxes)", weight: 12.5, priority: "normal", custName: "Acme Corp", custPhone: "+1-305-555-1001", sigReq: false, payment: 0, dist: 2.3, dur: 15, createdDays: -2 },
@@ -171,15 +171,14 @@ export async function seedDatabase(): Promise<void> {
   // Seed drivers
   for (const d of SEED_DRIVERS) {
     await db.insert(drivers).values({
-      id: d.id,
-      fleet_id: "fleet-001",
-      user_id: d.userId,
-      name: d.name,
-      email: d.email,
-      license_number: d.licenseNumber,
-      license_expiry: iso(d.licenseExpiryDays),
-      assigned_vehicle_id: d.assignedVehicleId,
-      status: d.status,
+              id: d.id,
+              fleet_id: "fleet-001",
+              user_id: d.userId,
+              name: d.name,
+              email: d.email,
+              license_number: d.licenseNumber,
+              license_expiry: iso(d.licenseExpiryDays),
+              status: d.status,
       rating: d.rating,
       total_deliveries: d.totalDeliveries,
       phone_number: d.phone,

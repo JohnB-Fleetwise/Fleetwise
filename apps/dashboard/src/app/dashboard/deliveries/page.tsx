@@ -98,7 +98,7 @@ export default function DeliveriesPage() {
       dropoffState: "FL",
       dropoffZip: "",
       driverId: firstAvailable?.id ?? "",
-      vehicleId: firstAvailable?.assignedVehicleId ?? "",
+      vehicleId: vehicles.find(v => v.assignedDriverId === firstAvailable?.id)?.id ?? "",
       packageDescription: "",
       priority: "normal",
     });
@@ -556,11 +556,10 @@ export default function DeliveriesPage() {
                     value={form.driverId}
                     onChange={(e) => {
                       const newDriverId = e.target.value;
-                      const newDriver = drivers.find((d) => d.id === newDriverId);
                       setForm({
                         ...form,
                         driverId: newDriverId,
-                        vehicleId: newDriver?.assignedVehicleId ?? "",
+                        vehicleId: vehicles.find(v => v.assignedDriverId === newDriverId)?.id ?? "",
                       });
                     }}
                   >
