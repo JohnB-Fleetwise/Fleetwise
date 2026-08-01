@@ -13,5 +13,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "overrides": {
+    "oauth": "0.9.14"
+  }
 }
