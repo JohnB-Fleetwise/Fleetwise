@@ -61,8 +61,8 @@ const SEED_VEHICLES = [
 ];
 
 const SEED_DRIVERS = [
-      { id: "D-001", userId: "user-001", name: "Sarah Chen", email: "sarah.chen@fleetwise.com", licenseNumber: "DL-FL-1234567", licenseExpiryDays: 500, status: "on_delivery", rating: 4.8, totalDeliveries: 1240, phone: "+1-305-555-0101", createdDays: -300 },
-      { id: "D-002", userId: "user-002", name: "Marcus Johnson", email: "marcus.j@fleetwise.com", licenseNumber: "DL-FL-2345678", licenseExpiryDays: 400, status: "on_delivery", rating: 4.5, totalDeliveries: 890, phone: "+1-407-555-0102", createdDays: -200 },
+      { id: "D-001", userId: "user-001", name: "Sarah Chen", email: "sarah.chen@fleetwise.com", licenseNumber: "DL-FL-1234567", licenseExpiryDays: 500, status: "on_delivery", rating: 4.8, totalDeliveries: 1240, phone: "+1-305-555-0101", createdDays: -300, clockedIn: true, clockedInHoursAgo: 2 },
+      { id: "D-002", userId: "user-002", name: "Marcus Johnson", email: "marcus.j@fleetwise.com", licenseNumber: "DL-FL-2345678", licenseExpiryDays: 400, status: "on_delivery", rating: 4.5, totalDeliveries: 890, phone: "+1-407-555-0102", createdDays: -200, clockedIn: true, clockedInHoursAgo: 5 },
       { id: "D-003", userId: "user-003", name: "Javier Rodriguez", email: "javier.r@fleetwise.com", licenseNumber: "DL-FL-3456789", licenseExpiryDays: 600, status: "available", rating: 4.9, totalDeliveries: 2100, phone: "+1-813-555-0103", createdDays: -500 },
       { id: "D-004", userId: "user-004", name: "Emily Park", email: "emily.park@fleetwise.com", licenseNumber: "DL-FL-4567890", licenseExpiryDays: 300, status: "available", rating: 4.2, totalDeliveries: 430, phone: "+1-904-555-0104", createdDays: -150 },
       { id: "D-005", userId: "user-005", name: "David Kim", email: "david.kim@fleetwise.com", licenseNumber: "DL-FL-5678901", licenseExpiryDays: 200, status: "on_delivery", rating: 4.7, totalDeliveries: 1560, phone: "+1-954-555-0105", createdDays: -250 },
@@ -182,6 +182,9 @@ export async function seedDatabase(): Promise<void> {
       rating: d.rating,
       total_deliveries: d.totalDeliveries,
       phone_number: d.phone,
+      clocked_in: d.clockedIn ?? false,
+      clocked_in_at: d.clockedIn ? new Date(Date.now() - (d.clockedInHoursAgo ?? 2) * 3600000) : null,
+      clocked_out_at: null,
       created_at: new Date(iso(d.createdDays)),
       updated_at: new Date(),
     });

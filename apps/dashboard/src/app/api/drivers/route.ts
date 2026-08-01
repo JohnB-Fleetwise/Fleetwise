@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
     rating: data.rating || 0,
     totalDeliveries: data.totalDeliveries || 0,
     phoneNumber: data.phoneNumber || "",
+    clockedIn: data.clockedIn ?? false,
+    clockedInAt: data.clockedInAt,
+    clockedOutAt: data.clockedOutAt,
     createdAt: now,
     updatedAt: now,
   };
