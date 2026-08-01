@@ -76,7 +76,8 @@ export interface Delivery {
   paymentCollected: number; // cents
   distanceKm?: number;
   estimatedDurationMin?: number;
-  createdAt: string;
+  createdAt: string; // ISO 8601 — when the delivery was assigned/created
+  completedAt?: string; // ISO 8601 — when the delivery was completed (delivered)
   updatedAt: string;
 }
 

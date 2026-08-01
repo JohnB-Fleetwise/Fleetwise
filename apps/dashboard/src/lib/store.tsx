@@ -128,10 +128,11 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addDelivery = useCallback(async (d: Delivery) => {
+    const payload = { ...d, createdAt: d.createdAt ?? new Date().toISOString() };
     const created = await fetchJson("/api/deliveries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(d),
+      body: JSON.stringify(payload),
     });
     setDeliveries((prev) => [...prev, created]);
   }, []);
