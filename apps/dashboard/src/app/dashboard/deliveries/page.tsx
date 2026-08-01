@@ -59,6 +59,13 @@ function formatAddress(addr: Address): string {
   return parts.join(", ") || addr.street;
 }
 
+function formatDate(iso?: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function uid(): string {
   return "DLV-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
@@ -192,7 +199,11 @@ export default function DeliveriesPage() {
     if (!d) return;
     const idx = STATUS_FLOW.indexOf(d.status);
     if (idx >= 0 && idx < STATUS_FLOW.length - 1) {
-      updateDelivery(id, { status: STATUS_FLOW[idx + 1] });
+      const next = STATUS_FLOW[idx + 1];
+      updateDelivery(id, {
+        status: next,
+        ...(next === DeliveryStatus.Delivered ? { completedAt: new Date().toISOString() } : {}),
+      });
     } else if (d.status === DeliveryStatus.Pending) {
       updateDelivery(id, { status: DeliveryStatus.Assigned });
     }
@@ -249,6 +260,8 @@ export default function DeliveriesPage() {
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Dropoff</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
               <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -269,6 +282,8 @@ export default function DeliveriesPage() {
                   {formatAddress(d.dropoffAddress)}
                 </td>
                 <td className="px-6 py-4">{statusBadge(d.status)}</td>
+                <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(d.createdAt)}</td>
+                <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(d.completedAt)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{getDriverName(d.driverId)}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   {new Date(d.scheduledDropoffTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -299,7 +314,7 @@ export default function DeliveriesPage() {
             ))}
             {deliveries.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={9} className="px-6 py-12 text-center text-gray-400 text-sm">
                   No deliveries yet.
                 </td>
               </tr>
@@ -345,6 +360,14 @@ export default function DeliveriesPage() {
                 <span className="text-gray-700">
                   {new Date(d.scheduledDropoffTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
+              </div>
+              <div>
+                <span className="text-gray-400">Created:</span>{" "}
+                <span className="text-gray-700">{formatDate(d.createdAt)}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Completed:</span>{" "}
+                <span className="text-gray-700">{formatDate(d.completedAt)}</span>
               </div>
             </div>
           </div>
@@ -413,6 +436,14 @@ export default function DeliveriesPage() {
                 <span className="text-gray-900">
                   {new Date(detailDelivery.scheduledDropoffTime).toLocaleString()}
                 </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Created</span>
+                <span className="text-gray-900">{formatDate(detailDelivery.createdAt)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Completed</span>
+                <span className="text-gray-900">{formatDate(detailDelivery.completedAt)}</span>
               </div>
               {detailDelivery.specialInstructions && (
                 <div className="flex justify-between">

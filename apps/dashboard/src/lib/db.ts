@@ -101,6 +101,7 @@ export const deliveries = pgTable("deliveries", {
   distance_km: real("distance_km"),
   estimated_duration_min: integer("estimated_duration_min"),
   created_at: timestamp("created_at").notNull().defaultNow(),
+  completed_at: timestamp("completed_at"),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -222,8 +223,13 @@ export async function ensureSchema(): Promise<void> {
       "distance_km" real,
       "estimated_duration_min" integer,
       "created_at" timestamp NOT NULL DEFAULT now(),
+      "completed_at" timestamp,
       "updated_at" timestamp NOT NULL DEFAULT now()
     );
+  `;
+  // Add the column to existing tables (CREATE TABLE IF NOT EXISTS won't alter them)
+  await sql`
+    ALTER TABLE "deliveries" ADD COLUMN IF NOT EXISTS "completed_at" timestamp;
   `;
 }
 
@@ -317,6 +323,7 @@ function mapDelivery(row: any) {
     distanceKm: row.distance_km ?? undefined,
     estimatedDurationMin: row.estimated_duration_min ?? undefined,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    completedAt: row.completed_at ? (row.completed_at instanceof Date ? row.completed_at.toISOString() : String(row.completed_at)) : undefined,
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
   };
 }
@@ -573,7 +580,8 @@ export async function createDelivery(d: any): Promise<void> {
     payment_collected: d.paymentCollected || 0,
     distance_km: d.distanceKm ?? null,
     estimated_duration_min: d.estimatedDurationMin ?? null,
-    created_at: d.createdAt ? new Date(d.createdAt) : now,
+    created_at: d.createdAt ? new Date(d.createdAt) : new Date(), // defaults to now (ISO 8601 on read)
+    completed_at: d.completedAt ?? null,
     updated_at: now,
   });
 }
@@ -582,6 +590,7 @@ export async function updateDelivery(id: string, data: any): Promise<void> {
   const db = getDb();
   const updates: any = { updated_at: new Date() };
   if (data.status !== undefined) updates.status = data.status;
+  if (data.completedAt !== undefined) updates.completed_at = data.completedAt;
   if (data.driverId !== undefined) updates.driver_id = data.driverId;
   if (data.vehicleId !== undefined) updates.vehicle_id = data.vehicleId;
   if (data.priority !== undefined) updates.priority = data.priority;
