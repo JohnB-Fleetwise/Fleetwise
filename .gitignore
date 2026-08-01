@@ -1,1 +1,8 @@
-node_modules/\n.next/\ndist/\ndata/\n*.log\n.env\n.env.local\n.tanstack/
+node_modules/
+.next/
+dist/
+data/
+*.log
+.env
+.env.local
+.tanstack/
