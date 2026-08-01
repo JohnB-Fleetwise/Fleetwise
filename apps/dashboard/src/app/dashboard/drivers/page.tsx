@@ -20,12 +20,54 @@ function statusBadge(status: DriverStatus) {
   );
 }
 
+function clockBadge(d: Driver) {
+  if (d.clockedIn) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"
+        title={d.clockedInAt ? `Clocked in at ${new Date(d.clockedInAt).toLocaleString()}` : "Clocked in"}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+        In{" "}
+        {d.clockedInAt
+          ? new Date(d.clockedInAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+          : ""}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500"
+      title={d.clockedOutAt ? `Clocked out at ${new Date(d.clockedOutAt).toLocaleString()}` : "Not clocked in"}
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+      Out
+    </span>
+  );
+}
+
+function clockToggle(d: Driver, clockIn: (id: string) => Promise<void>, clockOut: (id: string) => Promise<void>) {
+  return (
+    <button
+      onClick={() => (d.clockedIn ? clockOut(d.id) : clockIn(d.id))}
+      className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+        d.clockedIn
+          ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+          : "bg-green-100 text-green-700 hover:bg-green-200"
+      }`}
+      title={d.clockedIn ? "Clock out" : "Clock in"}
+    >
+      {d.clockedIn ? "Clock Out" : "Clock In"}
+    </button>
+  );
+}
+
 function uid(): string {
   return "D-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
 export default function DriversPage() {
-  const { drivers, vehicles, addDriver, updateDriver, deleteDriver, updateVehicle } = useFleetStore();
+  const { drivers, vehicles, addDriver, updateDriver, deleteDriver, updateVehicle, clockIn, clockOut } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -77,6 +119,7 @@ export default function DriversPage() {
         rating: 0,
         totalDeliveries: 0,
         phoneNumber: form.phone,
+        clockedIn: false,
         createdAt: now,
         updatedAt: now,
       });
@@ -121,6 +164,7 @@ export default function DriversPage() {
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Clock</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Vehicle</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
               <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -137,6 +181,7 @@ export default function DriversPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{d.phoneNumber}</td>
                   <td className="px-6 py-4">{statusBadge(d.status)}</td>
+                  <td className="px-6 py-4">{clockBadge(d)}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">{getVehicleName(d.id)}</span>
@@ -158,6 +203,7 @@ export default function DriversPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {clockToggle(d, clockIn, clockOut)}
                       <button
                         onClick={() => openEdit(d)}
                         className="p-1.5 text-gray-400 hover:text-fleet-600 rounded hover:bg-gray-100"
@@ -183,7 +229,7 @@ export default function DriversPage() {
             })}
             {drivers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 text-sm">
                   No drivers yet. Click &ldquo;Add Driver&rdquo; to get started.
                 </td>
               </tr>
@@ -203,7 +249,10 @@ export default function DriversPage() {
                   <p className="text-sm font-semibold text-gray-900">{display.name}</p>
                   <p className="text-xs text-gray-400">{display.email}</p>
                 </div>
-                {statusBadge(d.status)}
+                <div className="flex flex-col items-end gap-1">
+                  {statusBadge(d.status)}
+                  {clockBadge(d)}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
@@ -226,6 +275,7 @@ export default function DriversPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+                {clockToggle(d, clockIn, clockOut)}
                 <button
                   onClick={() => openEdit(d)}
                   className="flex-1 py-1.5 text-xs font-medium text-fleet-600 bg-fleet-50 rounded-lg hover:bg-fleet-100"

@@ -62,6 +62,9 @@ export const drivers = pgTable("drivers", {
   rating: real("rating").notNull().default(0),
   total_deliveries: integer("total_deliveries").notNull().default(0),
   phone_number: text("phone_number").notNull().default(""),
+  clocked_in: boolean("clocked_in").notNull().default(false),
+  clocked_in_at: timestamp("clocked_in_at"),
+  clocked_out_at: timestamp("clocked_out_at"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -183,6 +186,9 @@ export async function ensureSchema(): Promise<void> {
       "rating" real NOT NULL DEFAULT 0,
       "total_deliveries" integer NOT NULL DEFAULT 0,
       "phone_number" text NOT NULL DEFAULT '',
+      "clocked_in" boolean NOT NULL DEFAULT false,
+      "clocked_in_at" timestamp,
+      "clocked_out_at" timestamp,
       "created_at" timestamp NOT NULL DEFAULT now(),
       "updated_at" timestamp NOT NULL DEFAULT now()
     );
@@ -230,6 +236,16 @@ export async function ensureSchema(): Promise<void> {
   // Add the column to existing tables (CREATE TABLE IF NOT EXISTS won't alter them)
   await sql`
     ALTER TABLE "deliveries" ADD COLUMN IF NOT EXISTS "completed_at" timestamp;
+  `;
+  // Clock in/out columns on drivers (idempotent for existing databases)
+  await sql`
+    ALTER TABLE "drivers" ADD COLUMN IF NOT EXISTS "clocked_in" boolean NOT NULL DEFAULT false;
+  `;
+  await sql`
+    ALTER TABLE "drivers" ADD COLUMN IF NOT EXISTS "clocked_in_at" timestamp;
+  `;
+  await sql`
+    ALTER TABLE "drivers" ADD COLUMN IF NOT EXISTS "clocked_out_at" timestamp;
   `;
 }
 
@@ -280,6 +296,13 @@ function mapDriver(row: any) {
     rating: row.rating,
     totalDeliveries: row.total_deliveries,
     phoneNumber: row.phone_number,
+    clockedIn: row.clocked_in ?? false,
+    clockedInAt: row.clocked_in_at
+      ? (row.clocked_in_at instanceof Date ? row.clocked_in_at.toISOString() : String(row.clocked_in_at))
+      : undefined,
+    clockedOutAt: row.clocked_out_at
+      ? (row.clocked_out_at instanceof Date ? row.clocked_out_at.toISOString() : String(row.clocked_out_at))
+      : undefined,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
   };
@@ -497,6 +520,9 @@ export async function createDriver(d: any): Promise<void> {
     rating: d.rating || 0,
     total_deliveries: d.totalDeliveries || 0,
     phone_number: d.phoneNumber || "",
+    clocked_in: d.clockedIn ?? false,
+    clocked_in_at: d.clockedInAt ? new Date(d.clockedInAt) : null,
+    clocked_out_at: d.clockedOutAt ? new Date(d.clockedOutAt) : null,
     created_at: d.createdAt ? new Date(d.createdAt) : now,
     updated_at: now,
   });
@@ -513,6 +539,9 @@ export async function updateDriver(id: string, data: any): Promise<void> {
   if (data.rating !== undefined) updates.rating = data.rating;
   if (data.totalDeliveries !== undefined) updates.total_deliveries = data.totalDeliveries;
   if (data.phoneNumber !== undefined) updates.phone_number = data.phoneNumber;
+  if (data.clockedIn !== undefined) updates.clocked_in = data.clockedIn;
+  if (data.clockedInAt !== undefined) updates.clocked_in_at = data.clockedInAt ? new Date(data.clockedInAt) : null;
+  if (data.clockedOutAt !== undefined) updates.clocked_out_at = data.clockedOutAt ? new Date(data.clockedOutAt) : null;
   await db.update(drivers).set(updates).where(eq(drivers.id, id));
 }
 

@@ -47,6 +47,9 @@ export interface Driver {
   rating: number; // 1-5
   totalDeliveries: number;
   phoneNumber: string;
+  clockedIn: boolean;
+  clockedInAt?: string; // ISO 8601 — when the driver last clocked in
+  clockedOutAt?: string; // ISO 8601 — when the driver last clocked out
   createdAt: string;
   updatedAt: string;
 }

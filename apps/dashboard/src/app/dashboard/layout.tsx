@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { FleetProvider } from "@/lib/store";
+import { FleetProvider, useFleetStore } from "@/lib/store";
 
 const NAV_ITEMS = [
   {
@@ -87,7 +87,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [clockedIn, setClockedIn] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const userName = session?.user?.name || "User";
@@ -158,19 +157,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
-              {/* Clock In/Out toggle */}
-              <button
-                onClick={() => setClockedIn(!clockedIn)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  clockedIn
-                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${clockedIn ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-                <span className="hidden sm:inline">{clockedIn ? "Clocked In" : "Clocked Out"}</span>
-                <span className="sm:hidden">{clockedIn ? "In" : "Out"}</span>
-              </button>
+              {/* Clock In/Out toggle — backed by real driver data */}
+              <ClockInOutButton />
 
               {/* Notification bell */}
               <button className="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
@@ -226,6 +214,73 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
     </FleetProvider>
+  );
+}
+
+function ClockInOutButton() {
+  const { drivers, clockIn, clockOut } = useFleetStore();
+  const { data: session } = useSession();
+  const [busy, setBusy] = useState(false);
+
+  // Prefer the driver matching the logged-in user; fall back to the first driver.
+  const sessionUserId = (session?.user as any)?.id;
+  const driver = drivers.find((d) => d.userId === sessionUserId) ?? drivers[0];
+  const clockedIn = driver?.clockedIn ?? false;
+
+  if (!driver) {
+    // No driver identifiable — default to "Clocked Out" with the button disabled.
+    return (
+      <button
+        disabled
+        title="No driver linked to this account"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-400 opacity-60 cursor-not-allowed"
+      >
+        <span className="w-2 h-2 rounded-full bg-gray-400" />
+        <span className="hidden sm:inline">Clocked Out</span>
+        <span className="sm:hidden">Out</span>
+      </button>
+    );
+  }
+
+  const handleClick = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (clockedIn) {
+        await clockOut(driver.id);
+      } else {
+        await clockIn(driver.id);
+      }
+    } catch (err) {
+      console.error("Failed to update clock status:", err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const timeLabel =
+    clockedIn && driver.clockedInAt
+      ? ` since ${new Date(driver.clockedInAt).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        })}`
+      : "";
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy}
+      title={clockedIn ? `Clocked in${timeLabel} — click to clock out` : "Click to clock in"}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+        clockedIn
+          ? "bg-green-100 text-green-700 hover:bg-green-200"
+          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+      } ${busy ? "opacity-60 cursor-wait" : ""}`}
+    >
+      <span className={`w-2 h-2 rounded-full ${clockedIn ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
+      <span className="hidden sm:inline">{clockedIn ? "Clocked In" : "Clocked Out"}</span>
+      <span className="sm:hidden">{clockedIn ? "In" : "Out"}</span>
+    </button>
   );
 }
 
