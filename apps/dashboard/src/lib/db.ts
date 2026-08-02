@@ -11,6 +11,7 @@ import {
   real,
   integer,
   boolean,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { eq, and, sql, desc } from "drizzle-orm";
 
@@ -105,6 +106,18 @@ export const deliveries = pgTable("deliveries", {
   estimated_duration_min: integer("estimated_duration_min"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   completed_at: timestamp("completed_at"),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const fleetSettings = pgTable("fleet_settings", {
+  fleet_id: text("fleet_id").primaryKey(),
+  street: text("street").notNull().default(""),
+  city: text("city").notNull().default(""),
+  state: text("state").notNull().default("FL"),
+  zip_code: text("zip_code").notNull().default(""),
+  country: text("country").notNull().default("US"),
+  home_lat: doublePrecision("home_lat"),
+  home_lng: doublePrecision("home_lng"),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -230,6 +243,19 @@ export async function ensureSchema(): Promise<void> {
       "estimated_duration_min" integer,
       "created_at" timestamp NOT NULL DEFAULT now(),
       "completed_at" timestamp,
+      "updated_at" timestamp NOT NULL DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS "fleet_settings" (
+      "fleet_id" text PRIMARY KEY NOT NULL,
+      "street" text NOT NULL DEFAULT '',
+      "city" text NOT NULL DEFAULT '',
+      "state" text NOT NULL DEFAULT 'FL',
+      "zip_code" text NOT NULL DEFAULT '',
+      "country" text NOT NULL DEFAULT 'US',
+      "home_lat" double precision,
+      "home_lng" double precision,
       "updated_at" timestamp NOT NULL DEFAULT now()
     );
   `;
@@ -661,6 +687,58 @@ export async function updateDelivery(id: string, data: any): Promise<void> {
 export async function deleteDelivery(id: string): Promise<void> {
   const db = getDb();
   await db.delete(deliveries).where(eq(deliveries.id, id));
+}
+
+// ─── Fleet Settings ───────────────────────────────────────
+
+function mapFleetSettings(row: any) {
+  return {
+    fleetId: row.fleet_id,
+    homeLocation: {
+      street: row.street,
+      city: row.city,
+      state: row.state,
+      zipCode: row.zip_code,
+      country: row.country,
+      coordinates: row.home_lat != null ? { latitude: row.home_lat, longitude: row.home_lng } : undefined,
+    },
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+  };
+}
+
+export async function getFleetSettings(fleetId: string) {
+  const db = getDb();
+  const rows = await db.select().from(fleetSettings).where(eq(fleetSettings.fleet_id, fleetId)).limit(1);
+  if (rows.length === 0) return null;
+  return mapFleetSettings(rows[0]);
+}
+
+export async function upsertFleetSettings(
+  fleetId: string,
+  data: { homeLocation: { street: string; city: string; state: string; zipCode: string; country: string; coordinates?: { latitude: number; longitude: number } } }
+) {
+  const db = getDb();
+  const hl = data.homeLocation;
+  const now = new Date();
+  const values = {
+    fleet_id: fleetId,
+    street: hl.street,
+    city: hl.city,
+    state: hl.state,
+    zip_code: hl.zipCode,
+    country: hl.country,
+    home_lat: hl.coordinates?.latitude ?? null,
+    home_lng: hl.coordinates?.longitude ?? null,
+    updated_at: now,
+  };
+  await db
+    .insert(fleetSettings)
+    .values(values)
+    .onConflictDoUpdate({
+      target: fleetSettings.fleet_id,
+      set: { ...values, updated_at: now },
+    });
+  return mapFleetSettings(values);
 }
 
 // ─── Fleet Summary ────────────────────────────────────────

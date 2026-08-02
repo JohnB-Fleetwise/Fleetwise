@@ -71,10 +71,13 @@ function uid(): string {
 }
 
 export default function DeliveriesPage() {
-  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, deleteDelivery } = useFleetStore();
+  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, deleteDelivery, fleetSettings } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+
+  // Home location (depot) from settings — default pickup origin
+  const homeLocation = fleetSettings?.homeLocation;
 
   const [form, setForm] = useState({
     customerName: "",
@@ -96,10 +99,10 @@ export default function DeliveriesPage() {
     const firstAvailable = drivers.find((d) => d.status === "available");
     setForm({
       customerName: "",
-      pickupStreet: "340 SE 2nd St",
-      pickupCity: "Miami",
-      pickupState: "FL",
-      pickupZip: "33131",
+      pickupStreet: homeLocation?.street ?? "340 SE 2nd St",
+      pickupCity: homeLocation?.city ?? "Miami",
+      pickupState: homeLocation?.state ?? "FL",
+      pickupZip: homeLocation?.zipCode ?? "33131",
       dropoffStreet: "",
       dropoffCity: "",
       dropoffState: "FL",
@@ -124,9 +127,19 @@ export default function DeliveriesPage() {
     const pickupFull = `${form.pickupStreet}, ${form.pickupCity}, ${form.pickupState} ${form.pickupZip}`;
     const dropoffFull = `${form.dropoffStreet}, ${form.dropoffCity}, ${form.dropoffState} ${form.dropoffZip}`;
 
-    // Geocode pickup address
-    const pickupCoords = await geocodeAddress(pickupFull);
-    await sleep(1500); // Respect Nominatim rate limit
+    // Use the depot's coordinates when the pickup is the home location —
+    // no geocode call needed (coordinates come from fleet settings).
+    const pickupIsHome =
+      !!homeLocation &&
+      homeLocation.street.trim().toLowerCase() === form.pickupStreet.trim().toLowerCase() &&
+      homeLocation.city.trim().toLowerCase() === form.pickupCity.trim().toLowerCase();
+
+    let pickupCoords = pickupIsHome ? homeLocation!.coordinates : undefined;
+
+    if (!pickupCoords) {
+      pickupCoords = (await geocodeAddress(pickupFull)) ?? undefined;
+      await sleep(1500); // Respect Nominatim rate limit
+    }
 
     // Geocode dropoff address
     const dropoffCoords = await geocodeAddress(dropoffFull);

@@ -175,6 +175,13 @@ export interface Address {
   coordinates?: GeoPoint;
 }
 
+// ─── Fleet Settings ───────────────────────────────────
+export interface FleetSettings {
+  fleetId: string;
+  homeLocation: Address;
+  updatedAt: string;
+}
+
 // ─── Dashboard Stats ─────────────────────────────────
 export interface FleetSummary {
   totalVehicles: number;
