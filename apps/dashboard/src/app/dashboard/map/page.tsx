@@ -73,19 +73,16 @@ function createDeliveryIcon(color: string, letter: string) {
 function VehicleMarkers({ vehicles, deliveries }: { vehicles: Vehicle[]; deliveries: Delivery[] }) {
   if (typeof window === "undefined") return null;
 
-  // Compute set of vehicle IDs that are assigned to an active (in-progress) delivery
+  // Compute set of vehicle IDs that are assigned to a delivery that is actually in progress.
+  // Pending/assigned deliveries do NOT count — an idle vehicle assigned to a pending
+  // delivery must not appear on the map as an orange dot.
   const activeDeliveryVehicleIds = new Set(
     deliveries
-      .filter(
-        (d) =>
-          d.status !== "delivered" &&
-          d.status !== "cancelled" &&
-          d.status !== "failed"
-      )
+      .filter((d) => d.status === "picked_up" || d.status === "in_transit")
       .map((d) => d.vehicleId)
   );
 
-  // Only show vehicles that are "active" OR assigned to an active delivery
+  // Only show vehicles that are "active" OR assigned to an in-progress delivery
   const visibleVehicles = vehicles.filter(
     (v) => v.status === "active" || activeDeliveryVehicleIds.has(v.id)
   );
@@ -301,15 +298,12 @@ function VehicleSidebar({
   onSelect: (id: string) => void;
   deliveries: Delivery[];
 }) {
-  // Compute count of vehicles hidden from the map
+  // Compute count of vehicles hidden from the map.
+  // Only vehicles assigned to an in-progress delivery (picked_up/in_transit) count
+  // as visible; vehicles assigned to pending/assigned deliveries stay hidden.
   const activeDeliveryVehicleIds = new Set(
     deliveries
-      .filter(
-        (d) =>
-          d.status !== "delivered" &&
-          d.status !== "cancelled" &&
-          d.status !== "failed"
-      )
+      .filter((d) => d.status === "picked_up" || d.status === "in_transit")
       .map((d) => d.vehicleId)
   );
   const hiddenCount = vehicles.filter(
@@ -375,14 +369,25 @@ export default function MapPage() {
     setMounted(true);
   }, []);
 
-  const activeVehicles = vehicles.filter((v) => v.currentLocation);
+  // Only center on vehicles that are actually visible on the map: "active" vehicles
+  // plus vehicles assigned to an in-progress (picked_up/in_transit) delivery.
+  const activeDeliveryVehicleIds = new Set(
+    deliveries
+      .filter((d) => d.status === "picked_up" || d.status === "in_transit")
+      .map((d) => d.vehicleId)
+  );
+  const visibleVehicles = vehicles.filter(
+    (v) =>
+      v.currentLocation &&
+      (v.status === "active" || activeDeliveryVehicleIds.has(v.id))
+  );
   const centerLat =
-    activeVehicles.length > 0
-      ? activeVehicles.reduce((s, v) => s + v.currentLocation!.latitude, 0) / activeVehicles.length
+    visibleVehicles.length > 0
+      ? visibleVehicles.reduce((s, v) => s + v.currentLocation!.latitude, 0) / visibleVehicles.length
       : 28.5;
   const centerLng =
-    activeVehicles.length > 0
-      ? activeVehicles.reduce((s, v) => s + v.currentLocation!.longitude, 0) / activeVehicles.length
+    visibleVehicles.length > 0
+      ? visibleVehicles.reduce((s, v) => s + v.currentLocation!.longitude, 0) / visibleVehicles.length
       : -81.4;
 
   return (
