@@ -71,7 +71,7 @@ function uid(): string {
 }
 
 export default function DeliveriesPage() {
-  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, deleteDelivery, fleetSettings } = useFleetStore();
+  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, updateVehicle, deleteDelivery, fleetSettings } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -217,6 +217,11 @@ export default function DeliveriesPage() {
         status: next,
         ...(next === DeliveryStatus.Delivered ? { completedAt: new Date().toISOString() } : {}),
       });
+      // Move the assigned vehicle to the pickup spot when the delivery is picked up
+      if (next === DeliveryStatus.PickedUp && d.vehicleId && d.pickupAddress?.coordinates) {
+        const { latitude, longitude } = d.pickupAddress.coordinates;
+        updateVehicle(d.vehicleId, { currentLocation: { latitude, longitude } });
+      }
     } else if (d.status === DeliveryStatus.Pending) {
       updateDelivery(id, { status: DeliveryStatus.Assigned });
     }
