@@ -71,7 +71,7 @@ function uid(): string {
 }
 
 export default function DeliveriesPage() {
-  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, updateVehicle, deleteDelivery, fleetSettings } = useFleetStore();
+  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, updateVehicle, deleteDelivery, fleetSettings, loading } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -96,6 +96,12 @@ export default function DeliveriesPage() {
   });
 
   const openNew = () => {
+    // Wait for fleet data to load before pre-selecting driver/vehicle, so the
+    // form never shows a misleading pre-selected value backed by empty state.
+    if (loading || drivers.length === 0 || vehicles.length === 0) {
+      alert("Fleet data is still loading. Please try again in a moment.");
+      return;
+    }
     const firstAvailable = drivers.find((d) => d.status === "available");
     setForm({
       customerName: "",
@@ -260,12 +266,13 @@ export default function DeliveriesPage() {
         </div>
         <button
           onClick={openNew}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-fleet-600 text-white text-sm font-medium rounded-lg hover:bg-fleet-700 transition-colors"
+          disabled={loading}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-fleet-600 text-white text-sm font-medium rounded-lg hover:bg-fleet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          Create Delivery
+          {loading ? "Loading…" : "Create Delivery"}
         </button>
       </div>
 
@@ -612,6 +619,7 @@ export default function DeliveriesPage() {
                       });
                     }}
                   >
+                    <option value="">-- Select a driver --</option>
                     {drivers.map((dr) => (
                       <option key={dr.id} value={dr.id}>
                         {getDriverDisplay(dr).name}
@@ -626,6 +634,7 @@ export default function DeliveriesPage() {
                     value={form.vehicleId}
                     onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
                   >
+                    <option value="">-- Select a vehicle --</option>
                     {vehicles.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.name}
