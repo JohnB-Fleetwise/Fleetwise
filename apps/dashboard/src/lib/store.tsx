@@ -1,12 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import type { Vehicle, Driver, Delivery } from "@fleetwise/shared";
+import type { Vehicle, Driver, Delivery, Address, FleetSettings } from "@fleetwise/shared";
 
 interface FleetStore {
   vehicles: Vehicle[];
   drivers: Driver[];
   deliveries: Delivery[];
+  fleetSettings: FleetSettings | null;
   loading: boolean;
   addVehicle: (v: Vehicle) => Promise<void>;
   updateVehicle: (id: string, data: Partial<Vehicle>) => Promise<void>;
@@ -19,6 +20,7 @@ interface FleetStore {
   addDelivery: (d: Delivery) => Promise<void>;
   updateDelivery: (id: string, data: Partial<Delivery>) => Promise<void>;
   deleteDelivery: (id: string) => Promise<void>;
+  setHomeLocation: (address: Address) => Promise<void>;
 }
 
 const FleetContext = createContext<FleetStore | null>(null);
@@ -36,20 +38,24 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [fleetSettings, setFleetSettings] = useState<FleetSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch initial data from API
   useEffect(() => {
     async function loadData() {
       try {
-        const [v, d, dlv] = await Promise.all([
+        const [v, d, dlv, fs] = await Promise.all([
           fetchJson("/api/vehicles"),
           fetchJson("/api/drivers"),
           fetchJson("/api/deliveries"),
+          fetchJson("/api/fleet-settings"),
         ]);
         setVehicles(v);
         setDrivers(d);
         setDeliveries(dlv);
+        // The GET returns { homeLocation: null } when nothing is saved yet
+        setFleetSettings(fs?.homeLocation ? fs : null);
       } catch (err) {
         console.error("Failed to load fleet data:", err);
       } finally {
@@ -187,12 +193,22 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     setDeliveries((prev) => prev.filter((dlv) => dlv.id !== id));
   }, []);
 
+  const setHomeLocation = useCallback(async (address: Address) => {
+    const updated = await fetchJson("/api/fleet-settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ homeLocation: address }),
+    });
+    setFleetSettings(updated);
+  }, []);
+
   return (
     <FleetContext.Provider
       value={{
         vehicles,
         drivers,
         deliveries,
+        fleetSettings,
         loading,
         addVehicle,
         updateVehicle,
@@ -205,6 +221,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
         addDelivery,
         updateDelivery,
         deleteDelivery,
+        setHomeLocation,
       }}
     >
       {children}

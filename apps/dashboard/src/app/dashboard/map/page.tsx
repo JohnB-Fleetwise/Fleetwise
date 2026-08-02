@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useFleetStore } from "@/lib/store";
 import { getVehicleDriverName } from "@/lib/mock-data";
-import type { Vehicle, Delivery } from "@fleetwise/shared";
+import type { Vehicle, Delivery, Address } from "@fleetwise/shared";
 import "leaflet/dist/leaflet.css";
 import dynamic from "next/dynamic";
 
@@ -68,6 +68,52 @@ function createDeliveryIcon(color: string, letter: string) {
     iconAnchor: [12, 12],
     popupAnchor: [0, -14],
   });
+}
+
+// Home (depot) marker — indigo pin with a house glyph
+function createHomeIcon() {
+  if (typeof window === "undefined") return undefined;
+  const L = (window as any).L;
+  if (!L) return undefined;
+  return L.divIcon({
+    className: "custom-marker",
+    html: `<div style="
+      width: 32px; height: 32px;
+      background: #6366f1;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(99,102,241,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; line-height: 1;
+    ">🏠</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18],
+  });
+}
+
+// Renders a marker at the fleet's home location (depot) when set
+function HomeMarker({ homeLocation }: { homeLocation?: Address }) {
+  if (typeof window === "undefined" || !homeLocation?.coordinates) return null;
+  const icon = createHomeIcon();
+  if (!icon) return null;
+  return (
+    <Marker
+      position={[homeLocation.coordinates.latitude, homeLocation.coordinates.longitude]}
+      icon={icon}
+    >
+      <Popup>
+        <div className="text-sm min-w-[150px]">
+          <p className="font-semibold text-gray-900">🏠 Home Location</p>
+          <p className="text-gray-500 text-xs mt-0.5">
+            {[homeLocation.street, homeLocation.city, homeLocation.state, homeLocation.zipCode]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
+        </div>
+      </Popup>
+    </Marker>
+  );
 }
 
 function VehicleMarkers({ vehicles, deliveries }: { vehicles: Vehicle[]; deliveries: Delivery[] }) {
@@ -361,7 +407,7 @@ function VehicleSidebar({
 }
 
 export default function MapPage() {
-  const { vehicles, deliveries } = useFleetStore();
+  const { vehicles, deliveries, fleetSettings } = useFleetStore();
   const [mounted, setMounted] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
 
@@ -381,14 +427,24 @@ export default function MapPage() {
       v.currentLocation &&
       (v.status === "active" || activeDeliveryVehicleIds.has(v.id))
   );
-  const centerLat =
-    visibleVehicles.length > 0
+
+  // If a home location is set, center the map on it with a slightly wider zoom
+  // so vehicles across the service area stay visible too.
+  const homeLocation = fleetSettings?.homeLocation;
+  const homeCoords = homeLocation?.coordinates;
+  const hasHome = !!homeCoords;
+
+  const centerLat = hasHome
+    ? homeCoords!.latitude
+    : visibleVehicles.length > 0
       ? visibleVehicles.reduce((s, v) => s + v.currentLocation!.latitude, 0) / visibleVehicles.length
       : 28.5;
-  const centerLng =
-    visibleVehicles.length > 0
+  const centerLng = hasHome
+    ? homeCoords!.longitude
+    : visibleVehicles.length > 0
       ? visibleVehicles.reduce((s, v) => s + v.currentLocation!.longitude, 0) / visibleVehicles.length
       : -81.4;
+  const mapZoom = hasHome ? 6 : 7;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] -m-4 md:-m-6">
@@ -402,8 +458,11 @@ export default function MapPage() {
         <div className="flex-1 min-h-[300px] md:min-h-0">
           {mounted && (
             <MapContainer
+              // Remount only when the centering source changes (home vs. vehicles),
+              // not on every vehicle GPS tick.
+              key={hasHome ? "home" : "vehicles"}
               center={[centerLat, centerLng]}
-              zoom={7}
+              zoom={mapZoom}
               className="w-full h-full"
               scrollWheelZoom={true}
             >
@@ -411,6 +470,7 @@ export default function MapPage() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <HomeMarker homeLocation={homeLocation} />
               <VehicleMarkers vehicles={vehicles} deliveries={deliveries} />
               <DeliveryLayer deliveries={deliveries} />
             </MapContainer>

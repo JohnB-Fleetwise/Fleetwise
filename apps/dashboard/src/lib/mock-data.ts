@@ -6,7 +6,7 @@
 // Skips seeding if fleet-001 already has vehicles.
 
 import bcrypt from "bcryptjs";
-import { getDb, users, vehicles, drivers, deliveries } from "./db";
+import { getDb, users, vehicles, drivers, deliveries, fleetSettings } from "./db";
 import { eq, sql } from "drizzle-orm";
 
 // ─── Helpers ───────────────────────────────────────────
@@ -114,6 +114,27 @@ export async function seedDatabase(): Promise<void> {
   await ensureSchema();
 
   const db = getDb();
+
+  // Seed fleet settings (idempotent — runs even when the rest is already seeded)
+  const existingSettings = await db
+    .select({ fleet_id: fleetSettings.fleet_id })
+    .from(fleetSettings)
+    .where(eq(fleetSettings.fleet_id, "fleet-001"))
+    .limit(1);
+  if (existingSettings.length === 0) {
+    await db.insert(fleetSettings).values({
+      fleet_id: "fleet-001",
+      street: "340 SE 2nd St",
+      city: "Miami",
+      state: "FL",
+      zip_code: "33131",
+      country: "US",
+      home_lat: MIA.lat,
+      home_lng: MIA.lng,
+      updated_at: new Date(),
+    });
+    console.log("[DB] Fleet settings (home location) seeded for fleet-001.");
+  }
 
   // Check if already seeded
   const existing = await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.fleet_id, "fleet-001")).limit(1);
