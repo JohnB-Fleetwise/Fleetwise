@@ -219,6 +219,17 @@ export default function DeliveriesPage() {
     const idx = STATUS_FLOW.indexOf(d.status);
     if (idx >= 0 && idx < STATUS_FLOW.length - 1) {
       const next = STATUS_FLOW[idx + 1];
+      // Never advance a delivery onto a vehicle that is in maintenance /
+      // out of service (defensive — the vehicle select already filters these).
+      if (next === DeliveryStatus.PickedUp && d.vehicleId) {
+        const vehicle = vehicles.find((v) => v.id === d.vehicleId);
+        if (vehicle?.status === "maintenance" || vehicle?.status === "out_of_service") {
+          alert(
+            "The assigned vehicle is in maintenance or out of service. It cannot be used for this delivery."
+          );
+          return;
+        }
+      }
       updateDelivery(id, {
         status: next,
         ...(next === DeliveryStatus.Delivered ? { completedAt: new Date().toISOString() } : {}),
@@ -635,11 +646,17 @@ export default function DeliveriesPage() {
                     onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
                   >
                     <option value="">-- Select a vehicle --</option>
-                    {vehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
+                    {vehicles
+                      .filter(
+                        (v) =>
+                          v.status !== "maintenance" &&
+                          v.status !== "out_of_service"
+                      )
+                      .map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>

@@ -28,10 +28,27 @@ function uid(): string {
 }
 
 export default function VehiclesPage() {
-  const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useFleetStore();
+  const { vehicles, deliveries, addVehicle, updateVehicle, deleteVehicle } =
+    useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Defensive display: flag any vehicle that is somehow both in maintenance /
+  // out of service AND assigned to an active (non-terminal) delivery.
+  const isConflicted = (v: Vehicle) => {
+    const hasActiveDelivery = deliveries.some(
+      (d) =>
+        d.vehicleId === v.id &&
+        d.status !== "delivered" &&
+        d.status !== "cancelled" &&
+        d.status !== "failed"
+    );
+    return (
+      (v.status === "maintenance" || v.status === "out_of_service") &&
+      hasActiveDelivery
+    );
+  };
 
   const [form, setForm] = useState({
     name: "",
@@ -148,7 +165,19 @@ export default function VehiclesPage() {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{v.licensePlate}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 capitalize">{v.category}</td>
-                <td className="px-6 py-4">{statusBadge(v.status)}</td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1.5">
+                    {statusBadge(v.status)}
+                    {isConflicted(v) && (
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white"
+                        title="Vehicle is in maintenance/out of service but still assigned to an active delivery"
+                      >
+                        ⚠ Conflict
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{getVehicleDriverName(v)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{v.odometerKm.toLocaleString()} mi</td>
                 <td className="px-6 py-4 text-right">
@@ -195,7 +224,14 @@ export default function VehiclesPage() {
                 <p className="text-sm font-semibold text-gray-900">{v.name}</p>
                 <p className="text-xs text-gray-400">{v.make} {v.model} ({v.year})</p>
               </div>
-              {statusBadge(v.status)}
+              <span className="inline-flex items-center gap-1.5">
+                {statusBadge(v.status)}
+                {isConflicted(v) && (
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white">
+                    ⚠ Conflict
+                  </span>
+                )}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
