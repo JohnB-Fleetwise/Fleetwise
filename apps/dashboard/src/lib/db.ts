@@ -118,6 +118,8 @@ export const fleetSettings = pgTable("fleet_settings", {
   country: text("country").notNull().default("US"),
   home_lat: doublePrecision("home_lat"),
   home_lng: doublePrecision("home_lng"),
+  trial_ends_at: timestamp("trial_ends_at").notNull().default(sql`(NOW() + INTERVAL '14 days')`),
+  plan: text("plan").notNull().default("none"),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -256,8 +258,18 @@ export async function ensureSchema(): Promise<void> {
       "country" text NOT NULL DEFAULT 'US',
       "home_lat" double precision,
       "home_lng" double precision,
+      "trial_ends_at" timestamp NOT NULL DEFAULT (NOW() + INTERVAL '14 days'),
+      "plan" text NOT NULL DEFAULT 'none',
       "updated_at" timestamp NOT NULL DEFAULT now()
     );
+  `;
+  // Trial/billing columns on fleet_settings (idempotent for existing databases —
+  // existing fleets get a fresh 14-day trial from the migration default)
+  await sql`
+    ALTER TABLE "fleet_settings" ADD COLUMN IF NOT EXISTS "trial_ends_at" timestamp NOT NULL DEFAULT (NOW() + INTERVAL '14 days');
+  `;
+  await sql`
+    ALTER TABLE "fleet_settings" ADD COLUMN IF NOT EXISTS "plan" text NOT NULL DEFAULT 'none';
   `;
   // Add the column to existing tables (CREATE TABLE IF NOT EXISTS won't alter them)
   await sql`
@@ -702,6 +714,10 @@ function mapFleetSettings(row: any) {
       country: row.country,
       coordinates: row.home_lat != null ? { latitude: row.home_lat, longitude: row.home_lng } : undefined,
     },
+    trialEndsAt: row.trial_ends_at
+      ? (row.trial_ends_at instanceof Date ? row.trial_ends_at.toISOString() : String(row.trial_ends_at))
+      : new Date(Date.now() + 14 * 86_400_000).toISOString(),
+    plan: (row.plan ?? "none") as "none" | "starter" | "professional",
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
   };
 }
@@ -736,9 +752,13 @@ export async function upsertFleetSettings(
     .values(values)
     .onConflictDoUpdate({
       target: fleetSettings.fleet_id,
+      // Never overwrite trial_ends_at / plan on conflict — a home-location save
+      // must not reset the trial or downgrade the plan.
       set: { ...values, updated_at: now },
     });
-  return mapFleetSettings(values);
+  // Re-read so the response includes the DB-side defaults (trial_ends_at, plan)
+  const rows = await db.select().from(fleetSettings).where(eq(fleetSettings.fleet_id, fleetId)).limit(1);
+  return mapFleetSettings(rows[0]);
 }
 
 // ─── Fleet Summary ────────────────────────────────────────

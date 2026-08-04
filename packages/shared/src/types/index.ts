@@ -176,9 +176,15 @@ export interface Address {
 }
 
 // ─── Fleet Settings ───────────────────────────────────
+export type Plan = "none" | "starter" | "professional";
+
 export interface FleetSettings {
   fleetId: string;
   homeLocation: Address;
+  /** ISO 8601 timestamp — when the free trial ends (14 days after the fleet was created) */
+  trialEndsAt: string;
+  /** Current subscription plan; "none" while on the free trial */
+  plan: Plan;
   updatedAt: string;
 }
 

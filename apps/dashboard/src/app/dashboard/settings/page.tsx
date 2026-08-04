@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useFleetStore } from "@/lib/store";
 import { geocodeAddress } from "@/lib/geocode";
+import SettingsNav from "@/components/settings-nav";
 import type { Address } from "@fleetwise/shared";
 
 const inputClass =
@@ -78,9 +79,11 @@ export default function SettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Manage your fleet&apos;s home base and preferences.
+          Manage your fleet&apos;s home base, plan, and preferences.
         </p>
       </div>
+
+      <SettingsNav />
 
       {/* Home Location card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

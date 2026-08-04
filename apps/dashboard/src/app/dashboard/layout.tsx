@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { FleetProvider, useFleetStore } from "@/lib/store";
+import TrialBanner from "@/components/trial-banner";
+import PlanBadge from "@/components/plan-badge";
 
 const NAV_ITEMS = [
   {
@@ -173,6 +175,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <h2 className="text-sm font-medium text-gray-500">Welcome back,</h2>
                 <p className="text-sm font-semibold text-gray-900">{userName}</p>
               </div>
+              {/* Plan / trial badge next to the fleet name */}
+              <PlanBadge />
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
@@ -229,7 +233,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </header>
 
           {/* Page content */}
-          <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
+            <TrialBanner />
+            {children}
+          </main>
         </div>
       </div>
     </FleetProvider>
