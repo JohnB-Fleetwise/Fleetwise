@@ -6,6 +6,7 @@ import { getDriverDisplay } from "@/lib/mock-data";
 import { DeliveryStatus } from "@fleetwise/shared";
 import type { Delivery, Address } from "@fleetwise/shared";
 import { geocodeAddress, sleep, getRouteDistance } from "@/lib/geocode";
+import { googleMapsDirectionsUrl } from "@/lib/maps";
 
 const STATUS_FLOW: DeliveryStatus[] = [
   DeliveryStatus.Pending,
@@ -29,6 +30,28 @@ function statusBadge(status: DeliveryStatus) {
     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${map[status] ?? "bg-gray-100"}`}>
       {status.replace("_", " ")}
     </span>
+  );
+}
+
+/** Google Maps "Navigate" link for a delivery — opens directions in a new tab / maps app. */
+function NavLink({ delivery }: { delivery: Delivery }) {
+  const coords = delivery.dropoffAddress?.coordinates;
+  return (
+    <a
+      href={coords ? googleMapsDirectionsUrl(coords) : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={coords ? "Navigate to dropoff" : "No dropoff coordinates"}
+      className={`p-1.5 rounded hover:bg-gray-100 ${
+        coords ? "text-fleet-600 hover:text-fleet-700" : "text-gray-300 pointer-events-none"
+      }`}
+      aria-label="Navigate to dropoff"
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </a>
   );
 }
 
@@ -326,6 +349,7 @@ export default function DeliveriesPage() {
                 </td>
                 <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1">
+                    <NavLink delivery={d} />
                     <button
                       onClick={() => advanceStatus(d.id)}
                       className="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-gray-100"
@@ -405,6 +429,35 @@ export default function DeliveriesPage() {
                 <span className="text-gray-400">Completed:</span>{" "}
                 <span className="text-gray-700">{formatDate(d.completedAt)}</span>
               </div>
+            </div>
+            <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+              {d.dropoffAddress?.coordinates && (
+                <a
+                  href={googleMapsDirectionsUrl(d.dropoffAddress.coordinates)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-fleet-600 text-white text-xs font-medium rounded-lg hover:bg-fleet-700"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Navigate
+                </a>
+              )}
+              {d.pickupAddress?.coordinates && (
+                <a
+                  href={googleMapsDirectionsUrl(d.pickupAddress.coordinates)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-fleet-600 text-fleet-700 text-xs font-medium rounded-lg hover:bg-fleet-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 17l4 4 4-4m-4-5V3" />
+                  </svg>
+                  Pickup
+                </a>
+              )}
             </div>
           </div>
         ))}
@@ -486,6 +539,36 @@ export default function DeliveriesPage() {
                   <span className="text-gray-500">Notes</span>
                   <span className="text-gray-900 text-right max-w-[200px]">{detailDelivery.specialInstructions}</span>
                 </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              {detailDelivery.dropoffAddress?.coordinates && (
+                <a
+                  href={googleMapsDirectionsUrl(detailDelivery.dropoffAddress.coordinates)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-fleet-600 rounded-lg hover:bg-fleet-700"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Navigate to Dropoff
+                </a>
+              )}
+              {detailDelivery.pickupAddress?.coordinates && (
+                <a
+                  href={googleMapsDirectionsUrl(detailDelivery.pickupAddress.coordinates)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-fleet-700 border border-fleet-600 rounded-lg hover:bg-fleet-50"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 17l4 4 4-4m-4-5V3" />
+                  </svg>
+                  Navigate to Pickup
+                </a>
               )}
             </div>
 
