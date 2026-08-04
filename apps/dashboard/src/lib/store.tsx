@@ -65,9 +65,21 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     loadData();
   }, []);
 
-  // GPS simulation every 4 seconds (client-side only)
+  // Live vehicle polling every 4 seconds:
+  // 1. Re-fetch vehicles from the API so locations reported by the Driver View
+  //    (PUT /api/vehicles/:id) show up on the map without a manual refresh.
+  // 2. Keep the demo GPS simulation for a lively map — it jitters vehicles
+  //    around their latest known position.
   useEffect(() => {
-    const interval = setInterval(() => {
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await fetchJson("/api/vehicles");
+        if (!cancelled) setVehicles(fresh);
+      } catch {
+        // Network hiccup — keep local state; the next tick retries.
+      }
+      if (cancelled) return;
       setVehicles((prev) =>
         prev.map((v) => {
           if (v.status !== "active" || !v.currentLocation) return v;
@@ -82,7 +94,10 @@ export function FleetProvider({ children }: { children: ReactNode }) {
         })
       );
     }, 4000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const addVehicle = useCallback(async (v: Vehicle) => {
