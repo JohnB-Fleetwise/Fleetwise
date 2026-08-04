@@ -31,8 +31,19 @@ function statusBadge(status: string) {
 }
 
 export default function MaintenancePage() {
-  const { vehicles, drivers, updateVehicle, updateDriver } = useFleetStore();
+  const { vehicles, drivers, deliveries, updateVehicle, updateDriver } =
+    useFleetStore();
   const [showForm, setShowForm] = useState(false);
+
+  // A delivery is "active" while it is still in progress (not terminal).
+  const hasActiveDelivery = (vehicleId: string) =>
+    deliveries.some(
+      (d) =>
+        d.vehicleId === vehicleId &&
+        d.status !== "delivered" &&
+        d.status !== "cancelled" &&
+        d.status !== "failed"
+    );
 
   const [form, setForm] = useState({
     vehicleId: "",
@@ -46,9 +57,12 @@ export default function MaintenancePage() {
     (v) => v.status === "maintenance" || v.status === "out_of_service"
   );
 
-  // Vehicles eligible for scheduling maintenance (active or idle — not already in maintenance)
+  // Vehicles eligible for scheduling maintenance (active or idle — not already
+  // in maintenance, and not assigned to an active delivery)
   const schedulableVehicles = vehicles.filter(
-    (v) => v.status === "active" || v.status === "idle"
+    (v) =>
+      (v.status === "active" || v.status === "idle") &&
+      !hasActiveDelivery(v.id)
   );
 
   const getDriverForVehicle = (vehicleId?: string): string => {
@@ -73,6 +87,15 @@ export default function MaintenancePage() {
     if (!form.vehicleId || !form.description) return;
 
     const vehicle = vehicles.find((v) => v.id === form.vehicleId);
+
+    // Never take a vehicle into maintenance while it is assigned to an
+    // active (non-terminal) delivery.
+    if (hasActiveDelivery(form.vehicleId)) {
+      alert(
+        "This vehicle is assigned to an active delivery. Complete or cancel the delivery before scheduling maintenance."
+      );
+      return;
+    }
 
     // Mark vehicle as maintenance
     await updateVehicle(form.vehicleId, { status: "maintenance" });
