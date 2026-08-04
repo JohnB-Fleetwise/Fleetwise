@@ -16,9 +16,9 @@ import {
 // Stripe payment links — PLACEHOLDERS. The lead replaces these
 // with real Stripe payment-link URLs (create_payment_link tool).
 // ─────────────────────────────────────────────────────────────
-const STARTER_PAYMENT_LINK = "{{STARTER_PAYMENT_LINK}}";
-const PROFESSIONAL_PAYMENT_LINK = "{{PROFESSIONAL_PAYMENT_LINK}}";
-const MANAGE_SUBSCRIPTION_LINK = "{{MANAGE_SUBSCRIPTION_LINK}}";
+const STARTER_PAYMENT_LINK = "https://buy.stripe.com/6oU6oH8Fqfg97jre2r4wM02";
+const PROFESSIONAL_PAYMENT_LINK = "https://buy.stripe.com/6oU4gz5te2tn9rz0bB4wM03";
+const MANAGE_SUBSCRIPTION_LINK = "https://billing.stripe.com/p/login/placeholder";
 // ─────────────────────────────────────────────────────────────
 
 interface PlanCard {
