@@ -54,8 +54,11 @@ export function FleetProvider({ children }: { children: ReactNode }) {
         setVehicles(v);
         setDrivers(d);
         setDeliveries(dlv);
-        // The GET returns { homeLocation: null } when nothing is saved yet
-        setFleetSettings(fs?.homeLocation ? fs : null);
+        // The GET returns { homeLocation: null } when nothing is saved yet.
+        // Keep the settings object when it carries trial/billing info too, so
+        // the trial countdown and plan badge work even before a home location
+        // has been saved.
+        setFleetSettings(fs?.homeLocation || fs?.trialEndsAt ? fs : null);
       } catch (err) {
         console.error("Failed to load fleet data:", err);
       } finally {
