@@ -77,7 +77,7 @@ export interface Delivery {
   customerPhone: string;
   signatureRequired: boolean;
   paymentCollected: number; // cents
-  distanceKm?: number;
+  distanceMi?: number; // driving distance in miles
   estimatedDurationMin?: number;
   createdAt: string; // ISO 8601 — when the delivery was assigned/created
   completedAt?: string; // ISO 8601 — when the delivery was completed (delivered)

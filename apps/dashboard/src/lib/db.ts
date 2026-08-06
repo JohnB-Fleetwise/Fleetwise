@@ -381,7 +381,9 @@ function mapDelivery(row: any) {
     customerPhone: row.customer_phone,
     signatureRequired: row.signature_required,
     paymentCollected: row.payment_collected,
-    distanceKm: row.distance_km ?? undefined,
+    // Physical column keeps its legacy name `distance_km` but stores miles —
+    // renamed in JS only (`distanceMi`) to avoid a DB migration.
+    distanceMi: row.distance_km ?? undefined,
     estimatedDurationMin: row.estimated_duration_min ?? undefined,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     completedAt: row.completed_at ? (row.completed_at instanceof Date ? row.completed_at.toISOString() : String(row.completed_at)) : undefined,
@@ -634,7 +636,6 @@ export async function createDelivery(d: any): Promise<void> {
     dropoff_lat: da.coordinates?.latitude ?? null,
     dropoff_lng: da.coordinates?.longitude ?? null,
     scheduled_pickup_time: d.scheduledPickupTime || now.toISOString(),
-    scheduled_dropoff_time: d.scheduledDropoffTime || new Date(Date.now() + 2 * 3600000).toISOString(),
     actual_pickup_time: d.actualPickupTime ?? null,
     actual_dropoff_time: d.actualDropoffTime ?? null,
     package_description: d.packageDescription || "Package",
@@ -645,7 +646,11 @@ export async function createDelivery(d: any): Promise<void> {
     customer_phone: d.customerPhone || "",
     signature_required: d.signatureRequired || false,
     payment_collected: d.paymentCollected || 0,
-    distance_km: d.distanceKm ?? null,
+    // Safety net only — the API route computes the real ETA from Google Maps
+    // before calling createDelivery. Kept in sync (now + 2h) so the defaults
+    // never diverge if a caller skips the API route.
+    scheduled_dropoff_time: d.scheduledDropoffTime || new Date(Date.now() + 2 * 3600000).toISOString(),
+    distance_km: d.distanceMi ?? null,
     estimated_duration_min: d.estimatedDurationMin ?? null,
     created_at: d.createdAt ? new Date(d.createdAt) : new Date(), // defaults to now (ISO 8601 on read)
     completed_at: d.completedAt ?? null,
@@ -671,6 +676,8 @@ export async function updateDelivery(id: string, data: any): Promise<void> {
   if (data.actualDropoffTime !== undefined) updates.actual_dropoff_time = data.actualDropoffTime;
   if (data.scheduledPickupTime !== undefined) updates.scheduled_pickup_time = data.scheduledPickupTime;
   if (data.scheduledDropoffTime !== undefined) updates.scheduled_dropoff_time = data.scheduledDropoffTime;
+  if (data.distanceMi !== undefined) updates.distance_km = data.distanceMi; // legacy column name, stores miles
+  if (data.estimatedDurationMin !== undefined) updates.estimated_duration_min = data.estimatedDurationMin;
   if (data.pickupAddress) {
     updates.pickup_street = data.pickupAddress.street;
     updates.pickup_city = data.pickupAddress.city;

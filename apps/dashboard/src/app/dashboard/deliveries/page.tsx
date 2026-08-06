@@ -215,14 +215,13 @@ export default function DeliveriesPage() {
         pickupAddress: pickupAddr,
         dropoffAddress: dropoffAddr,
         scheduledPickupTime: now,
-        scheduledDropoffTime: new Date(Date.now() + 2 * 3600000).toISOString(),
         packageDescription: form.packageDescription || "Package",
         priority: form.priority,
         customerName: form.customerName,
         customerPhone: driver?.phoneNumber ?? "",
         signatureRequired: false,
         paymentCollected: 0,
-        distanceKm: distanceMiles,
+        distanceMi: distanceMiles,
         createdAt: now,
         updatedAt: now,
       } as Delivery);
@@ -517,7 +516,7 @@ export default function DeliveriesPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Distance</span>
                 <span className="text-gray-900">
-                  {detailDelivery.distanceKm != null ? `${detailDelivery.distanceKm} mi` : "—"}
+                  {detailDelivery.distanceMi != null ? `${detailDelivery.distanceMi} mi` : "—"}
                 </span>
               </div>
               <div className="flex justify-between">
