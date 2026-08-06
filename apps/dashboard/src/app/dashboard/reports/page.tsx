@@ -5,8 +5,6 @@ import { getDriverDisplay } from "@/lib/mock-data";
 import StatCard from "@/components/ui/stat-card";
 import type { Vehicle, VehicleStatus } from "@fleetwise/shared";
 
-const KM_TO_MILES = 0.621371;
-
 // ─── Helpers ────────────────────────────────────────────
 
 function formatClockIn(iso?: string): string {
@@ -28,10 +26,6 @@ function formatDuration(fromIso: string, toIso: string): string {
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return `${h}h ${m}m`;
-}
-
-function toMiles(km?: number): number {
-  return (km ?? 0) * KM_TO_MILES;
 }
 
 function formatMiles(miles: number): string {
@@ -130,7 +124,7 @@ export default function ReportsPage() {
     (v) => v.status === "maintenance" || v.status === "out_of_service"
   ).length;
   const deliveriesToday = deliveries.filter((dlv) => isToday(dlv.createdAt)).length;
-  const totalFleetMiles = deliveries.reduce((sum, dlv) => sum + toMiles(dlv.distanceKm), 0);
+  const totalFleetMiles = deliveries.reduce((sum, dlv) => sum + (dlv.distanceMi ?? 0), 0);
 
   const sortedDrivers = [...drivers].sort((a, b) =>
     getDriverDisplay(a).name.localeCompare(getDriverDisplay(b).name)
@@ -144,7 +138,7 @@ export default function ReportsPage() {
     const completed = deliveries.filter(
       (dlv) => dlv.driverId === d.id && dlv.status === "delivered"
     );
-    const totalMiles = completed.reduce((sum, dlv) => sum + toMiles(dlv.distanceKm), 0);
+    const totalMiles = completed.reduce((sum, dlv) => sum + (dlv.distanceMi ?? 0), 0);
     return {
       driver: d,
       completed: completed.length,
@@ -156,7 +150,7 @@ export default function ReportsPage() {
   // Per-vehicle delivery stats
   const vehicleStats = sortedVehicles.map((v) => {
     const owned = deliveries.filter((dlv) => dlv.vehicleId === v.id);
-    const totalMiles = owned.reduce((sum, dlv) => sum + toMiles(dlv.distanceKm), 0);
+    const totalMiles = owned.reduce((sum, dlv) => sum + (dlv.distanceMi ?? 0), 0);
     return { vehicle: v, deliveries: owned.length, totalMiles };
   });
 
