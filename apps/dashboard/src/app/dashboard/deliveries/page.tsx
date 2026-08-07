@@ -103,6 +103,7 @@ export default function DeliveriesPage() {
   const homeLocation = fleetSettings?.homeLocation;
 
   const [form, setForm] = useState({
+    orderNumber: "",
     customerName: "",
     pickupStreet: "340 SE 2nd St",
     pickupCity: "Miami",
@@ -127,6 +128,7 @@ export default function DeliveriesPage() {
     }
     const firstAvailable = drivers.find((d) => d.status === "available");
     setForm({
+      orderNumber: "",
       customerName: "",
       pickupStreet: homeLocation?.street ?? "340 SE 2nd St",
       pickupCity: homeLocation?.city ?? "Miami",
@@ -212,6 +214,7 @@ export default function DeliveriesPage() {
         driverId: form.driverId,
         vehicleId: form.vehicleId,
         status: DeliveryStatus.Pending,
+        orderNumber: form.orderNumber.trim() || undefined,
         pickupAddress: pickupAddr,
         dropoffAddress: dropoffAddr,
         scheduledPickupTime: now,
@@ -333,7 +336,7 @@ export default function DeliveriesPage() {
                 onClick={() => setDetailId(d.id)}
               >
                 <td className="px-6 py-4">
-                  <span className="text-sm font-mono text-fleet-600">{d.id}</span>
+                  <span className="text-sm font-mono text-fleet-600">{d.orderNumber || "—"}</span>
                 </td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{d.customerName}</td>
                 <td className="px-6 py-4 text-sm text-gray-500 max-w-[180px] truncate">
@@ -393,7 +396,7 @@ export default function DeliveriesPage() {
             <div className="flex items-start justify-between mb-2">
               <div>
                 <p className="text-sm font-semibold text-gray-900">{d.customerName}</p>
-                <p className="text-xs text-gray-400 font-mono">{d.id}</p>
+                <p className="text-xs text-gray-400 font-mono">{d.orderNumber || "—"}</p>
               </div>
               {statusBadge(d.status)}
             </div>
@@ -470,7 +473,7 @@ export default function DeliveriesPage() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">{detailDelivery.customerName}</h2>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{detailDelivery.id}</p>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{detailDelivery.orderNumber || "—"}</p>
               </div>
               {statusBadge(detailDelivery.status)}
             </div>
@@ -483,6 +486,10 @@ export default function DeliveriesPage() {
             </div>
 
             <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Order #</span>
+                <span className="text-gray-900 font-medium">{detailDelivery.orderNumber || "—"}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Driver</span>
                 <span className="text-gray-900 font-medium">{getDriverName(detailDelivery.driverId)}</span>
@@ -605,6 +612,15 @@ export default function DeliveriesPage() {
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Delivery</h2>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Order # / PO</label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                  value={form.orderNumber}
+                  onChange={(e) => setForm({ ...form, orderNumber: e.target.value })}
+                  placeholder="PO-1042 (optional)"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
                 <input

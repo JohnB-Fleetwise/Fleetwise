@@ -63,6 +63,7 @@ export interface Delivery {
   driverId: string;
   vehicleId: string;
   status: DeliveryStatus;
+  orderNumber?: string; // customer's own delivery / PO reference number
   pickupAddress: Address;
   dropoffAddress: Address;
   scheduledPickupTime: string;

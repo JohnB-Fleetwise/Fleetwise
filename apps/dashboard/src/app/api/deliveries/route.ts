@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     driverId: data.driverId || "",
     vehicleId: data.vehicleId || "",
     status: data.status || "pending",
+    orderNumber: data.orderNumber || undefined,
     pickupAddress: data.pickupAddress || { street: "", city: "", state: "FL", zipCode: "", country: "US" },
     dropoffAddress: data.dropoffAddress || { street: data.address || "", city: "", state: "FL", zipCode: "", country: "US" },
     scheduledPickupTime,
