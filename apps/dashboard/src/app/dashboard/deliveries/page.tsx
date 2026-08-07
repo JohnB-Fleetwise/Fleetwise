@@ -6,7 +6,7 @@ import { getDriverDisplay } from "@/lib/mock-data";
 import { DeliveryStatus } from "@fleetwise/shared";
 import type { Delivery, Address } from "@fleetwise/shared";
 import { geocodeAddress, sleep, getRouteDistance } from "@/lib/geocode";
-import { googleMapsDirectionsUrl } from "@/lib/maps";
+import { googleMapsDirectionsUrl, getDriveTimeSeconds } from "@/lib/maps";
 
 const STATUS_FLOW: DeliveryStatus[] = [
   DeliveryStatus.Pending,
@@ -107,6 +107,7 @@ export default function DeliveriesPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Home location (depot) from settings — default pickup origin
   const homeLocation = fleetSettings?.homeLocation;
@@ -114,6 +115,7 @@ export default function DeliveriesPage() {
   const [form, setForm] = useState({
     orderNumber: "",
     customerName: "",
+    customerPhone: "",
     pickupStreet: "340 SE 2nd St",
     pickupCity: "Miami",
     pickupState: "FL",
@@ -126,6 +128,7 @@ export default function DeliveriesPage() {
     vehicleId: "",
     packageDescription: "",
     priority: "normal" as "low" | "normal" | "high" | "urgent",
+    specialInstructions: "",
   });
 
   const openNew = () => {
@@ -139,6 +142,7 @@ export default function DeliveriesPage() {
     setForm({
       orderNumber: "",
       customerName: "",
+      customerPhone: "",
       pickupStreet: homeLocation?.street ?? "340 SE 2nd St",
       pickupCity: homeLocation?.city ?? "Miami",
       pickupState: homeLocation?.state ?? "FL",
@@ -151,7 +155,39 @@ export default function DeliveriesPage() {
       vehicleId: vehicles.find(v => v.assignedDriverId === firstAvailable?.id)?.id ?? "",
       packageDescription: "",
       priority: "normal",
+      specialInstructions: "",
     });
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (delivery: Delivery) => {
+    // Same guard as openNew — the driver/vehicle selects need fleet data to
+    // show the delivery's current assignments.
+    if (loading || drivers.length === 0 || vehicles.length === 0) {
+      alert("Fleet data is still loading. Please try again in a moment.");
+      return;
+    }
+    setForm({
+      orderNumber: delivery.orderNumber ?? "",
+      customerName: delivery.customerName,
+      customerPhone: delivery.customerPhone ?? "",
+      pickupStreet: delivery.pickupAddress?.street ?? "",
+      pickupCity: delivery.pickupAddress?.city ?? "",
+      pickupState: delivery.pickupAddress?.state ?? "FL",
+      pickupZip: delivery.pickupAddress?.zipCode ?? "",
+      dropoffStreet: delivery.dropoffAddress?.street ?? "",
+      dropoffCity: delivery.dropoffAddress?.city ?? "",
+      dropoffState: delivery.dropoffAddress?.state ?? "FL",
+      dropoffZip: delivery.dropoffAddress?.zipCode ?? "",
+      driverId: delivery.driverId,
+      vehicleId: delivery.vehicleId,
+      packageDescription: delivery.packageDescription ?? "",
+      priority: delivery.priority,
+      specialInstructions: delivery.specialInstructions ?? "",
+    });
+    setEditingId(delivery.id);
+    setDetailId(null);
     setShowForm(true);
   };
 
@@ -217,33 +253,87 @@ export default function DeliveriesPage() {
     }
 
     try {
-      await addDelivery({
-        id: uid(),
-        fleetId: "fleet-001",
-        driverId: form.driverId,
-        vehicleId: form.vehicleId,
-        status: DeliveryStatus.Pending,
-        orderNumber: form.orderNumber.trim() || undefined,
-        pickupAddress: pickupAddr,
-        dropoffAddress: dropoffAddr,
-        scheduledPickupTime: now,
-        packageDescription: form.packageDescription || "Package",
-        priority: form.priority,
-        customerName: form.customerName,
-        customerPhone: driver?.phoneNumber ?? "",
-        signatureRequired: false,
-        paymentCollected: 0,
-        distanceMi: distanceMiles,
-        createdAt: now,
-        updatedAt: now,
-      } as Delivery);
+      if (editingId) {
+        // ── Edit mode ──────────────────────────────────────────────────────
+        const existing = deliveries.find((d) => d.id === editingId);
+        const addressesChanged =
+          !existing ||
+          existing.pickupAddress?.street !== form.pickupStreet ||
+          existing.pickupAddress?.city !== form.pickupCity ||
+          existing.pickupAddress?.state !== form.pickupState ||
+          existing.pickupAddress?.zipCode !== form.pickupZip ||
+          existing.dropoffAddress?.street !== form.dropoffStreet ||
+          existing.dropoffAddress?.city !== form.dropoffCity ||
+          existing.dropoffAddress?.state !== form.dropoffState ||
+          existing.dropoffAddress?.zipCode !== form.dropoffZip;
 
-      // Update driver status to on_delivery
-      await updateDriver(form.driverId, { status: "on_delivery" });
+        const payload: Partial<Delivery> = {
+          driverId: form.driverId,
+          vehicleId: form.vehicleId,
+          orderNumber: form.orderNumber.trim() || undefined,
+          pickupAddress: pickupAddr,
+          dropoffAddress: dropoffAddr,
+          packageDescription: form.packageDescription || "Package",
+          priority: form.priority,
+          customerName: form.customerName,
+          customerPhone: form.customerPhone || existing?.customerPhone || "",
+          specialInstructions: form.specialInstructions.trim() || undefined,
+        };
 
-      setShowForm(false);
+        // Recompute the ETA only when the route actually changed and both
+        // addresses geocoded. Otherwise keep the existing scheduled dropoff
+        // time / duration (and the DB's NOT NULL column is left untouched).
+        if (addressesChanged && pickupCoords && dropoffCoords) {
+          const driveTimeSeconds = await getDriveTimeSeconds(
+            { lat: pickupCoords.latitude, lng: pickupCoords.longitude },
+            { lat: dropoffCoords.latitude, lng: dropoffCoords.longitude }
+          );
+          if (driveTimeSeconds != null) {
+            const base = existing?.scheduledPickupTime ?? now;
+            payload.scheduledDropoffTime = new Date(
+              new Date(base).getTime() + driveTimeSeconds * 1000
+            ).toISOString();
+            payload.estimatedDurationMin = Math.round(driveTimeSeconds / 60);
+          }
+          payload.distanceMi = distanceMiles;
+        }
+
+        await updateDelivery(editingId, payload);
+        setEditingId(null);
+        setShowForm(false);
+      } else {
+        // ── Create mode ────────────────────────────────────────────────────
+        await addDelivery({
+          id: uid(),
+          fleetId: "fleet-001",
+          driverId: form.driverId,
+          vehicleId: form.vehicleId,
+          status: DeliveryStatus.Pending,
+          orderNumber: form.orderNumber.trim() || undefined,
+          pickupAddress: pickupAddr,
+          dropoffAddress: dropoffAddr,
+          scheduledPickupTime: now,
+          packageDescription: form.packageDescription || "Package",
+          priority: form.priority,
+          customerName: form.customerName,
+          customerPhone: (form.customerPhone || driver?.phoneNumber) ?? "",
+          signatureRequired: false,
+          paymentCollected: 0,
+          distanceMi: distanceMiles,
+          createdAt: now,
+          updatedAt: now,
+        } as Delivery);
+
+        // Update driver status to on_delivery
+        await updateDriver(form.driverId, { status: "on_delivery" });
+
+        setShowForm(false);
+      }
     } catch (err) {
-      alert("Failed to create delivery: " + (err instanceof Error ? err.message : "Unknown error"));
+      alert(
+        (editingId ? "Failed to update delivery: " : "Failed to create delivery: ") +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     }
   };
 
@@ -394,6 +484,19 @@ export default function DeliveriesPage() {
                   <div className="flex items-center justify-end gap-1">
                     <NavLink delivery={d} />
                     <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(d);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-fleet-600 rounded hover:bg-gray-100"
+                      title="Edit delivery"
+                      aria-label="Edit delivery"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={() => advanceStatus(d.id)}
                       className="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-gray-100"
                       title="Advance status"
@@ -501,6 +604,15 @@ export default function DeliveriesPage() {
                   Pickup
                 </a>
               )}
+              <button
+                onClick={() => openEdit(d)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+              </button>
             </div>
           </div>
         ))}
@@ -621,6 +733,13 @@ export default function DeliveriesPage() {
 
             <div className="flex items-center gap-2 mt-6 pt-4 border-t border-gray-100">
               <button
+                onClick={() => openEdit(detailDelivery)}
+                className="px-3 py-2 text-sm font-medium text-fleet-700 bg-fleet-50 rounded-lg hover:bg-fleet-100"
+                title="Edit delivery"
+              >
+                Edit
+              </button>
+              <button
                 onClick={() => advanceStatus(detailDelivery.id)}
                 className="flex-1 px-3 py-2 text-sm font-medium text-white bg-fleet-600 rounded-lg hover:bg-fleet-700"
               >
@@ -692,12 +811,14 @@ export default function DeliveriesPage() {
         </div>
       )}
 
-      {/* Create form modal */}
+      {/* Create / edit form modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowForm(false)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setShowForm(false); setEditingId(null); }} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Delivery</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingId ? "Edit Delivery" : "Create Delivery"}
+            </h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Order # / PO</label>
@@ -715,6 +836,15 @@ export default function DeliveriesPage() {
                   value={form.customerName}
                   onChange={(e) => setForm({ ...form, customerName: e.target.value })}
                   placeholder="Acme Corp"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Phone</label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                  value={form.customerPhone}
+                  onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
+                  placeholder="(555) 123-4567"
                 />
               </div>
               <div>
@@ -867,10 +997,19 @@ export default function DeliveriesPage() {
                   <option value="urgent">Urgent</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                  value={form.specialInstructions}
+                  onChange={(e) => setForm({ ...form, specialInstructions: e.target.value })}
+                  placeholder="Leave at front desk, call on arrival…"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { setShowForm(false); setEditingId(null); }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Cancel
@@ -879,7 +1018,7 @@ export default function DeliveriesPage() {
                 onClick={handleSave}
                 className="px-4 py-2 text-sm font-medium text-white bg-fleet-600 rounded-lg hover:bg-fleet-700"
               >
-                Create Delivery
+                {editingId ? "Save Changes" : "Create Delivery"}
               </button>
             </div>
           </div>
