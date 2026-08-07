@@ -76,6 +76,7 @@ export const deliveries = pgTable("deliveries", {
   driver_id: text("driver_id").notNull(),
   vehicle_id: text("vehicle_id").notNull(),
   status: text("status").notNull().default("pending"),
+  order_number: text("order_number"),
   pickup_street: text("pickup_street").notNull().default(""),
   pickup_city: text("pickup_city").notNull().default(""),
   pickup_state: text("pickup_state").notNull().default("FL"),
@@ -215,6 +216,7 @@ export async function ensureSchema(): Promise<void> {
       "driver_id" text NOT NULL,
       "vehicle_id" text NOT NULL,
       "status" text NOT NULL DEFAULT 'pending',
+      "order_number" text,
       "pickup_street" text NOT NULL DEFAULT '',
       "pickup_city" text NOT NULL DEFAULT '',
       "pickup_state" text NOT NULL DEFAULT 'FL',
@@ -274,6 +276,9 @@ export async function ensureSchema(): Promise<void> {
   // Add the column to existing tables (CREATE TABLE IF NOT EXISTS won't alter them)
   await sql`
     ALTER TABLE "deliveries" ADD COLUMN IF NOT EXISTS "completed_at" timestamp;
+  `;
+  await sql`
+    ALTER TABLE "deliveries" ADD COLUMN IF NOT EXISTS "order_number" text;
   `;
   // Clock in/out columns on drivers (idempotent for existing databases)
   await sql`
@@ -353,6 +358,7 @@ function mapDelivery(row: any) {
     driverId: row.driver_id,
     vehicleId: row.vehicle_id,
     status: row.status,
+    orderNumber: row.order_number ?? undefined,
     pickupAddress: {
       street: row.pickup_street,
       city: row.pickup_city,
@@ -621,6 +627,7 @@ export async function createDelivery(d: any): Promise<void> {
     driver_id: d.driverId || "",
     vehicle_id: d.vehicleId || "",
     status: d.status || "pending",
+    order_number: d.orderNumber ?? null,
     pickup_street: pa.street || "",
     pickup_city: pa.city || "",
     pickup_state: pa.state || "FL",
@@ -665,6 +672,7 @@ export async function updateDelivery(id: string, data: any): Promise<void> {
   if (data.completedAt !== undefined) updates.completed_at = data.completedAt;
   if (data.driverId !== undefined) updates.driver_id = data.driverId;
   if (data.vehicleId !== undefined) updates.vehicle_id = data.vehicleId;
+  if (data.orderNumber !== undefined) updates.order_number = data.orderNumber;
   if (data.priority !== undefined) updates.priority = data.priority;
   if (data.customerName !== undefined) updates.customer_name = data.customerName;
   if (data.customerPhone !== undefined) updates.customer_phone = data.customerPhone;
