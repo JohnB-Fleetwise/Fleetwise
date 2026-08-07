@@ -147,6 +147,18 @@ export interface FuelRecord {
 
 export type FuelType = "regular" | "premium" | "diesel" | "electric";
 
+// ─── Message ──────────────────────────────────────────
+export interface Message {
+  id: string;
+  fleetId: string;
+  senderId: string;
+  recipientDriverId: string;
+  deliveryId?: string;
+  text: string;
+  createdAt: string;
+  readAt?: string;
+}
+
 // ─── User ─────────────────────────────────────────────
 export interface User {
   id: string;

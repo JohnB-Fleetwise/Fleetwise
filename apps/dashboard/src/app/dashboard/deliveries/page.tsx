@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFleetStore } from "@/lib/store";
 import { getDriverDisplay } from "@/lib/mock-data";
 import { DeliveryStatus } from "@fleetwise/shared";
@@ -89,15 +89,24 @@ function formatDate(iso?: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function uid(): string {
   return "DLV-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
 export default function DeliveriesPage() {
-  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, updateVehicle, deleteDelivery, fleetSettings, loading } = useFleetStore();
+  const { deliveries, drivers, vehicles, addDelivery, updateDriver, updateDelivery, updateVehicle, deleteDelivery, fleetSettings, loading, messages, fetchMessages, sendMessage } = useFleetStore();
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [messageText, setMessageText] = useState("");
+  const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Home location (depot) from settings — default pickup origin
@@ -381,6 +390,38 @@ export default function DeliveriesPage() {
   };
 
   const detailDelivery = detailId ? deliveries.find((d) => d.id === detailId) : null;
+
+  // Fetch the assigned driver's messages when the detail modal opens.
+  useEffect(() => {
+    if (detailId && detailDelivery?.driverId) {
+      fetchMessages(detailDelivery.driverId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailId, detailDelivery?.driverId]);
+
+  // Messages for the delivery's driver (dispatch → driver thread).
+  const deliveryMessages = useMemo(
+    () => messages.filter((m) => m.recipientDriverId === detailDelivery?.driverId),
+    [messages, detailDelivery?.driverId]
+  );
+
+  const handleSendMessage = async () => {
+    const text = messageText.trim();
+    if (!text || !detailDelivery || sending) return;
+    setSending(true);
+    try {
+      await sendMessage({
+        recipientDriverId: detailDelivery.driverId,
+        deliveryId: detailDelivery.id,
+        text,
+      });
+      setMessageText("");
+    } catch (err) {
+      alert("Failed to send message: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div>
@@ -719,6 +760,52 @@ export default function DeliveriesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
+            </div>
+
+            {/* Messages from dispatch */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Messages</h3>
+                <span className="text-xs text-gray-400">
+                  {deliveryMessages.length} {deliveryMessages.length === 1 ? "message" : "messages"}
+                </span>
+              </div>
+
+              {deliveryMessages.length === 0 ? (
+                <p className="text-sm text-gray-400 mb-3">No messages for this driver yet.</p>
+              ) : (
+                <ul className="space-y-2 mb-3 max-h-44 overflow-y-auto">
+                  {deliveryMessages.map((m) => (
+                    <li key={m.id} className="bg-fleet-50 border border-fleet-100 rounded-lg px-3 py-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm text-gray-800">{m.text}</p>
+                        <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                          {formatTime(m.createdAt)}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSendMessage();
+                  }}
+                  placeholder="Send a message to this driver…"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fleet-500 focus:border-transparent outline-none"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!messageText.trim() || sending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-fleet-600 rounded-lg hover:bg-fleet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sending ? "Sending…" : "Send"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -14,3 +14,9 @@ export async function requireFleetId(): Promise<string> {
   }
   return fleetId;
 }
+
+export async function getSessionUserId(): Promise<string | null> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return null;
+  return (session.user as any).id ?? null;
+}

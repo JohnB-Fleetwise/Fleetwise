@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import type { Vehicle, Driver, Delivery, Address, FleetSettings } from "@fleetwise/shared";
+import type { Vehicle, Driver, Delivery, Address, FleetSettings, Message } from "@fleetwise/shared";
 
 interface FleetStore {
   vehicles: Vehicle[];
@@ -21,6 +21,11 @@ interface FleetStore {
   updateDelivery: (id: string, data: Partial<Delivery>) => Promise<void>;
   deleteDelivery: (id: string) => Promise<void>;
   setHomeLocation: (address: Address) => Promise<void>;
+  messages: Message[];
+  unreadCount: number;
+  fetchMessages: (driverId: string) => Promise<void>;
+  sendMessage: (data: { recipientDriverId: string; deliveryId?: string; text: string }) => Promise<void>;
+  markRead: (messageIds: string[]) => Promise<void>;
 }
 
 const FleetContext = createContext<FleetStore | null>(null);
@@ -40,6 +45,8 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [fleetSettings, setFleetSettings] = useState<FleetSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Fetch initial data from API
   useEffect(() => {
@@ -220,6 +227,33 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     setFleetSettings(updated);
   }, []);
 
+  const fetchMessages = useCallback(async (driverId: string) => {
+    const msgs = await fetchJson(`/api/messages?driverId=${encodeURIComponent(driverId)}`);
+    setMessages(msgs);
+    setUnreadCount(msgs.filter((m: Message) => !m.readAt).length);
+  }, []);
+
+  const sendMessage = useCallback(async (data: { recipientDriverId: string; deliveryId?: string; text: string }) => {
+    const created = await fetchJson("/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    setMessages((prev) => [created, ...prev]);
+  }, []);
+
+  const markRead = useCallback(async (messageIds: string[]) => {
+    if (messageIds.length === 0) return;
+    await fetchJson("/api/messages/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageIds }),
+    });
+    const now = new Date().toISOString();
+    setMessages((prev) => prev.map((m) => (messageIds.includes(m.id) ? { ...m, readAt: now } : m)));
+    setUnreadCount((c) => Math.max(0, c - messageIds.length));
+  }, []);
+
   return (
     <FleetContext.Provider
       value={{
@@ -240,6 +274,11 @@ export function FleetProvider({ children }: { children: ReactNode }) {
         updateDelivery,
         deleteDelivery,
         setHomeLocation,
+        messages,
+        unreadCount,
+        fetchMessages,
+        sendMessage,
+        markRead,
       }}
     >
       {children}

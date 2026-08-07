@@ -13,7 +13,7 @@ import {
   boolean,
   doublePrecision,
 } from "drizzle-orm/pg-core";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 
 // ─── Drizzle Schema (inline — same as schema.ts) ─────────
 
@@ -122,6 +122,17 @@ export const fleetSettings = pgTable("fleet_settings", {
   trial_ends_at: timestamp("trial_ends_at").notNull().default(sql`(NOW() + INTERVAL '14 days')`),
   plan: text("plan").notNull().default("none"),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const messages = pgTable("messages", {
+  id: text("id").primaryKey(),
+  fleet_id: text("fleet_id").notNull(),
+  sender_id: text("sender_id").notNull(),
+  recipient_driver_id: text("recipient_driver_id").notNull(),
+  delivery_id: text("delivery_id"),
+  text: text("text").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  read_at: timestamp("read_at", { withTimezone: true }),
 });
 
 // ─── DB Connection ────────────────────────────────────────
@@ -290,6 +301,18 @@ export async function ensureSchema(): Promise<void> {
   await sql`
     ALTER TABLE "drivers" ADD COLUMN IF NOT EXISTS "clocked_out_at" timestamp;
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS "messages" (
+      "id" text PRIMARY KEY NOT NULL,
+      "fleet_id" text NOT NULL,
+      "sender_id" text NOT NULL,
+      "recipient_driver_id" text NOT NULL,
+      "delivery_id" text,
+      "text" text NOT NULL,
+      "created_at" timestamptz NOT NULL DEFAULT now(),
+      "read_at" timestamptz
+    );
+  `;
 }
 
 export function isSeeded(): boolean {
@@ -394,6 +417,19 @@ function mapDelivery(row: any) {
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     completedAt: row.completed_at ? (row.completed_at instanceof Date ? row.completed_at.toISOString() : String(row.completed_at)) : undefined,
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+  };
+}
+
+function mapMessage(row: any) {
+  return {
+    id: row.id,
+    fleetId: row.fleet_id,
+    senderId: row.sender_id,
+    recipientDriverId: row.recipient_driver_id,
+    deliveryId: row.delivery_id ?? undefined,
+    text: row.text,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    readAt: row.read_at ? (row.read_at instanceof Date ? row.read_at.toISOString() : String(row.read_at)) : undefined,
   };
 }
 
@@ -774,6 +810,72 @@ export async function upsertFleetSettings(
   // Re-read so the response includes the DB-side defaults (trial_ends_at, plan)
   const rows = await db.select().from(fleetSettings).where(eq(fleetSettings.fleet_id, fleetId)).limit(1);
   return mapFleetSettings(rows[0]);
+}
+
+// ─── Messages ────────────────────────────────────────────
+
+export async function createMessage(m: {
+  id: string;
+  fleetId: string;
+  senderId: string;
+  recipientDriverId: string;
+  deliveryId?: string;
+  text: string;
+  createdAt?: string;
+}): Promise<void> {
+  const db = getDb();
+  await db.insert(messages).values({
+    id: m.id,
+    fleet_id: m.fleetId,
+    sender_id: m.senderId,
+    recipient_driver_id: m.recipientDriverId,
+    delivery_id: m.deliveryId ?? null,
+    text: m.text,
+    created_at: m.createdAt ? new Date(m.createdAt) : new Date(),
+    read_at: null,
+  });
+}
+
+export async function getMessagesForDriver(driverId: string, fleetId: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.recipient_driver_id, driverId), eq(messages.fleet_id, fleetId)))
+    .orderBy(desc(messages.created_at))
+    .limit(50);
+  return rows.map(mapMessage);
+}
+
+export async function getUnreadCount(driverId: string, fleetId: string): Promise<number> {
+  const db = getDb();
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.recipient_driver_id, driverId),
+        eq(messages.fleet_id, fleetId),
+        sql`${messages.read_at} IS NULL`
+      )
+    );
+  return rows[0]?.count ?? 0;
+}
+
+export async function getMessagesByIds(ids: string[], fleetId: string) {
+  if (ids.length === 0) return [];
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.fleet_id, fleetId), inArray(messages.id, ids)));
+  return rows.map(mapMessage);
+}
+
+export async function markMessagesAsRead(messageIds: string[]): Promise<void> {
+  if (messageIds.length === 0) return;
+  const db = getDb();
+  await db.update(messages).set({ read_at: new Date() }).where(inArray(messages.id, messageIds));
 }
 
 // ─── Fleet Summary ────────────────────────────────────────

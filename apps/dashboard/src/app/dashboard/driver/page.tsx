@@ -36,9 +36,17 @@ function statusBadge(status: DeliveryStatus) {
   );
 }
 
+function formatTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function DriverViewPage() {
-  const { drivers, vehicles, deliveries, loading } = useFleetStore();
+  const { drivers, vehicles, deliveries, loading, messages, unreadCount, fetchMessages, markRead } = useFleetStore();
   const { data: session } = useSession();
+  const [messagesOpen, setMessagesOpen] = useState(false);
 
   // ── Driver selection ─────────────────────────────────────
   const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
@@ -79,6 +87,40 @@ export default function DriverViewPage() {
       ),
     [deliveries, selectedDriverId]
   );
+
+  // ── Messages from dispatch ──────────────────────────────
+  const driverMessages = useMemo(
+    () => messages.filter((m) => m.recipientDriverId === selectedDriverId),
+    [messages, selectedDriverId]
+  );
+
+  // Fetch the selected driver's messages on mount and every 10s.
+  useEffect(() => {
+    if (!selectedDriverId) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        await fetchMessages(selectedDriverId);
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
+      }
+    };
+    load();
+    const t = window.setInterval(load, 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [selectedDriverId, fetchMessages]);
+
+  // Mark unread messages as read once the driver opens the panel.
+  useEffect(() => {
+    if (!messagesOpen || !selectedDriverId) return;
+    const unread = driverMessages.filter((m) => !m.readAt);
+    if (unread.length > 0) {
+      markRead(unread.map((m) => m.id));
+    }
+  }, [messagesOpen, selectedDriverId, driverMessages, markRead]);
 
   // ── Tracking state ───────────────────────────────────────
   const [tracking, setTracking] = useState(false);
@@ -295,6 +337,62 @@ export default function DriverViewPage() {
             <p className="mt-1 text-amber-600 font-medium">{locationError}</p>
           )}
         </div>
+      </div>
+
+      {/* Messages from dispatch */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4">
+        <button
+          onClick={() => setMessagesOpen((o) => !o)}
+          className="w-full flex items-center justify-between px-4 py-3"
+          aria-expanded={messagesOpen}
+        >
+          <span className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-fleet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <span className="text-sm font-semibold text-gray-900">Messages from Dispatch</span>
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-600 text-white text-xs font-semibold">
+                {unreadCount}
+              </span>
+            )}
+          </span>
+          <svg
+            className={`w-4 h-4 text-gray-400 transition-transform ${messagesOpen ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {messagesOpen && (
+          <div className="px-4 pb-4">
+            {!selectedDriver ? (
+              <p className="text-sm text-gray-400 py-2">Select a driver to see their messages.</p>
+            ) : driverMessages.length === 0 ? (
+              <p className="text-sm text-gray-400 py-2">No messages from dispatch yet.</p>
+            ) : (
+              <ul className="space-y-2 max-h-64 overflow-y-auto">
+                {driverMessages.map((m) => (
+                  <li key={m.id} className="bg-fleet-50 border border-fleet-100 rounded-lg px-3 py-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm text-gray-800">{m.text}</p>
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                        {formatTime(m.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-medium text-fleet-600 mt-0.5 uppercase tracking-wide">
+                      From dispatch
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Active deliveries */}
