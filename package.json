@@ -7,6 +7,8 @@
     "apps/dashboard"
   ],
   "scripts": {
+    "dev": "npm run dev --workspace=@fleetwise/dashboard",
+    "build": "npm run build --workspace=@fleetwise/dashboard",
     "dev:dashboard": "npm run dev --workspace=@fleetwise/dashboard",
     "dev:mobile": "npm run start --workspace=@fleetwise/mobile",
     "build:shared": "npm run build --workspace=@fleetwise/shared",
