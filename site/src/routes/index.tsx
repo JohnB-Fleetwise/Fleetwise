@@ -70,8 +70,8 @@ function Navbar() {
             Pricing
           </a>
         </div>
-        <a href="https://fleetwise-dashboard-k61wwq8gd-fleetwise.vercel.app/dashboard" className="btn-primary text-sm !px-4 !py-2">
-          Start Free Trial
+        <a href="https://github.com/JohnB-Fleetwise/Fleetwise" className="btn-primary text-sm !px-4 !py-2">
+          View the code
         </a>
       </nav>
     </header>
@@ -101,8 +101,8 @@ function HeroSection() {
             all from one dashboard.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="https://fleetwise-dashboard-k61wwq8gd-fleetwise.vercel.app/dashboard" className="btn-primary text-lg !px-8 !py-3.5">
-              Start Free Trial
+            <a href="https://github.com/JohnB-Fleetwise/Fleetwise" className="btn-primary text-lg !px-8 !py-3.5">
+              View the code
             </a>
             <a
               href="#how-it-works"
@@ -520,10 +520,10 @@ function CTASection() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="https://fleetwise-dashboard-k61wwq8gd-fleetwise.vercel.app/dashboard"
+            href="https://github.com/JohnB-Fleetwise/Fleetwise"
             className="inline-flex items-center justify-center px-8 py-3.5 rounded-lg font-semibold text-fleet-700 bg-white hover:bg-fleet-50 transition-colors shadow-lg text-lg"
           >
-            Start Free Trial
+            View the code
           </a>
           <a
             href="mailto:hello@fleetwise.app"
