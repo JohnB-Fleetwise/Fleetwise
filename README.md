@@ -63,7 +63,7 @@ Additional workspace scripts:
 npm run typecheck        # Type-check all workspaces
 npm run lint             # Lint all workspaces
 npm run dev:dashboard    # Dashboard dev server (same as npm run dev)
-npm run dev:mobile       # Expo driver app
+# The Expo driver app (apps/mobile) is a standalone project — npm install and run it from that directory
 ```
 
 ## Environment Variables
@@ -96,4 +96,4 @@ The app **auto-deploys from `main` on Vercel**. Push to `main` and the productio
 | `npm run typecheck`         | Type-check all workspaces                        |
 | `npm run lint`              | Lint all workspaces                              |
 | `npm run dev:dashboard`     | Dashboard dev server (alias)                     |
-| `npm run dev:mobile`        | Expo driver app                                  |
+| `npm run dev:mobile`        | Expo driver app — standalone project, run from `apps/mobile` (not a root workspace) |
